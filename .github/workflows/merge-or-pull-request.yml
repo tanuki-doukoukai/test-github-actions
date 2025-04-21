@@ -12,6 +12,11 @@ on:
       next_workflow:
         required: false
         type: string
+    secrets:
+      tanuki_app_id:
+        required: true
+      tanuki_private_key:
+        required: true
 
 jobs:
   merge-or-pr:
