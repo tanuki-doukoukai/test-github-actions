@@ -31,8 +31,8 @@ jobs:
         id: instllation_token
         uses: actions/create-github-app-token@v1
         with:
-          app_id: ${{ secrets.TANUKI_APP_ID }}
-          private_key: ${{ secrets.TANUKI_APP_KEY }}
+          app-id: ${{ secrets.TANUKI_APP_ID }}
+          private-key: ${{ secrets.TANUKI_APP_KEY }}
 
       - name: Checkout Base Branch (${BASE_BRANCH})
         uses: actions/checkout@v4
