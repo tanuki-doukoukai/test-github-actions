@@ -3,12 +3,12 @@ name: Merge or Pull Request A to B
 on:
   push:
     branches:
-      - test-env-a
+      - deploy
 
 jobs:
   merge-or-pull-request-a-to-b:
     uses: ./.github/workflows/merge-or-pull-request.yml
     with:
-      base_branch: test-env-b
-      head_branch: test-env-a
+      base_branch: staging
+      head_branch: deploy
       next_workflow: merge-or-pull-request-b-to-c.yml
