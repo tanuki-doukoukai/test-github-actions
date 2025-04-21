@@ -27,6 +27,15 @@ jobs:
       PR_BODY_FILE: .github/pull_request_template.md
 
     steps:
+    - name: Check if secrets are loaded (App ID & Private Key)
+      run: |
+        echo "✅ TANUKI_APP_ID (前3文字): ${TANUKI_APP_ID:0:3}..."
+        echo "✅ TANUKI_PRIVATE_KEY の行数: $(echo "$TANUKI_PRIVATE_KEY" | wc -l) 行"
+        echo "✅ TANUKI_PRIVATE_KEY の先頭行: $(echo "$TANUKI_PRIVATE_KEY" | head -n 1)"
+      env:
+        TANUKI_APP_ID: ${{ secrets.TANUKI_APP_ID }}
+        TANUKI_PRIVATE_KEY: ${{ secrets.TANUKI_PRIVATE_KEY }}
+
       - name: Generate GitHub App Token using tibdex/github-app-token
         id: instllation_token
         uses: tibdex/github-app-token@v1
