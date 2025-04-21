@@ -29,10 +29,10 @@ jobs:
     steps:
       - name: Generate GitHub App Token using tibdex/github-app-token
         id: instllation_token
-        uses: actions/create-github-app-token@v1
+        uses: tibdex/github-app-token@v1
         with:
-          app-id: ${{ secrets.TANUKI_APP_ID }}
-          private-key: ${{ secrets.TANUKI_PRIVATE_KEY }}
+          app_id: ${{ secrets.TANUKI_APP_ID }}
+          private_key: ${{ secrets.TANUKI_PRIVATE_KEY }}
 
       - name: Checkout Base Branch (${BASE_BRANCH})
         uses: actions/checkout@v4
