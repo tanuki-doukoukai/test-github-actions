@@ -32,7 +32,7 @@ jobs:
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.TANUKI_APP_ID }}
-          private-key: ${{ secrets.TANUKI_APP_KEY }}
+          private-key: ${{ secrets.TANUKI_PRIVATE_KEY }}
 
       - name: Checkout Base Branch (${BASE_BRANCH})
         uses: actions/checkout@v4
