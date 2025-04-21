@@ -12,6 +12,11 @@ on:
       next_workflow:
         required: false
         type: string
+    secrets:
+      tanuki_app_id:
+        required: true
+      tanuki_private_key:
+        required: true
 
 jobs:
   merge-or-pr:
@@ -25,23 +30,32 @@ jobs:
       NEXT_WORKFLOW: ${{ inputs.next_workflow || '' }}
       PR_TITLE: "[Conflict] ${{ inputs.head_branch }} -> ${{ inputs.base_branch }}"
       PR_BODY_FILE: .github/pull_request_template.md
+      TANUKI_APP_ID: ${{ secrets.tanuki_app_id }}
+      TANUKI_PRIVATE_KEY: ${{ secrets.tanuki_private_key }}
 
     steps:
       - name: Check if secrets are loaded (App ID & Private Key)
         run: |
+          echo ""
           echo "✅ TANUKI_APP_ID (前3文字): ${TANUKI_APP_ID:0:3}..."
+          echo "✅ TANUKI_APP_ID の行数: $(echo "$TANUKI_APP_ID" | wc -l) 行"
+          echo "✅ TANUKI_APP_ID の先頭行: $(echo "$TANUKI_APP_ID" | head -n 1)"
+          echo ""
+          echo "----- 秘密鍵 (.pem) の検証 -----"
+          echo "✅ TANUKI_PRIVATE_KEY (前3文字): ${TANUKI_PRIVATE_KEY:0:3}..."
           echo "✅ TANUKI_PRIVATE_KEY の行数: $(echo "$TANUKI_PRIVATE_KEY" | wc -l) 行"
           echo "✅ TANUKI_PRIVATE_KEY の先頭行: $(echo "$TANUKI_PRIVATE_KEY" | head -n 1)"
+          echo "✅ TANUKI_PRIVATE_KEY の末尾行: $(echo "$TANUKI_PRIVATE_KEY" | tail -n 1)"
         env:
-          TANUKI_APP_ID: ${{ secrets.TANUKI_APP_ID }}
-          TANUKI_PRIVATE_KEY: ${{ secrets.TANUKI_PRIVATE_KEY }}
+          TANUKI_APP_ID: ${{ secrets.tanuki_app_id }}
+          TANUKI_PRIVATE_KEY: ${{ secrets.tanuki_private_key }}
 
       - name: Generate GitHub App Token using tibdex/github-app-token
-        id: instllation_token
+        id: installation_token
         uses: tibdex/github-app-token@v1
         with:
-          app_id: ${{ secrets.TANUKI_APP_ID }}
-          private_key: ${{ secrets.TANUKI_PRIVATE_KEY }}
+          app_id: ${{ env.TANUKI_APP_ID }}
+          private_key: ${{ env.TANUKI_PRIVATE_KEY }}
 
       - name: Checkout Base Branch (${BASE_BRANCH})
         uses: actions/checkout@v4
@@ -74,13 +88,13 @@ jobs:
         if: steps.merge_check.outputs.has_conflict == 'false'
         run: |
           git merge --no-edit ${{ env.HEAD_BRANCH }}
-          git remote set-url origin https://x-access-token:${{ steps.instllation_token.outputs.token }}@github.com/${{ env.REPO }}.git
+          git remote set-url origin https://x-access-token:${{ steps.installation_token.outputs.token }}@github.com/${{ env.REPO }}.git
           git push origin ${{ env.BASE_BRANCH }}
 
       - name: Trigger Next Workflow
         if: steps.merge_check.outputs.has_conflict == 'false' && env.NEXT_WORKFLOW != ''
         run: |
-          echo "${{ steps.instllation_token.outputs.token }}" | gh auth login --with-token
+          echo "${{ steps.installation_token.outputs.token }}" | gh auth login --with-token
           gh workflow run ${{ env.NEXT_WORKFLOW }} --ref ${{ env.BASE_BRANCH }}
 
       - name: Create Conflict Resolution Branch and Pull Request
@@ -92,13 +106,13 @@ jobs:
 
           COMMITS=$( \
             curl -s \
-              -H "Authorization: token ${{ steps.instllation_token.outputs.token }}" \
+              -H "Authorization: token ${{ steps.installation_token.outputs.token }}" \
               -H "Accept: application/vnd.github.v3+json" \
               "https://api.github.com/repos/$REPO/commits?sha=$HEAD_BRANCH&per_page=10")
 
           LAST_HUMAN_USER=$(echo "$COMMITS" | jq -r '.[] | select(.author.login != null and (.author.login | test("\\[bot\\]$") | not)) | .author.login' | head -n 1)
 
-          echo "${{ steps.instllation_token.outputs.token }}" | gh auth login --with-token
+          echo "${{ steps.installation_token.outputs.token }}" | gh auth login --with-token
           gh pr create \
             --base ${{ env.BASE_BRANCH }} \
             --head $FIX_CONFLICT_BRANCH \
