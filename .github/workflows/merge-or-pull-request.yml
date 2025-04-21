@@ -31,8 +31,8 @@ jobs:
       NEXT_WORKFLOW: ${{ inputs.next_workflow || '' }}
       PR_TITLE: "[Conflict] ${{ inputs.head_branch }} -> ${{ inputs.base_branch }}"
       PR_BODY_FILE: .github/pull_request_template.md
-      TANUKI_APP_ID: ${{ inputs.tanuki_app_id }}
-      TANUKI_PRIVATE_KEY: ${{ inputs.tanuki_private_key }}
+      TANUKI_APP_ID: ${{ secrets.tanuki_app_id }}
+      TANUKI_PRIVATE_KEY: ${{ secrets.tanuki_private_key }}
 
     steps:
       - name: Check if secrets are loaded (App ID & Private Key)
