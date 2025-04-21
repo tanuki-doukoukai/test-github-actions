@@ -1,6 +1,5 @@
 test
 test
-test
-test
-user A direct push
-user B direct push
+direct push staging lock branch  by admin
+enabled Do not allow bypassing the above settings
+add test line
