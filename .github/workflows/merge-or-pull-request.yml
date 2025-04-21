@@ -9,12 +9,6 @@ on:
       base_branch:
         required: true
         type: string
-      tanuki_app_id:
-        required: true
-        type: string
-      tanuki_private_key:
-        required: true
-        type: string
       next_workflow:
         required: false
         type: string
