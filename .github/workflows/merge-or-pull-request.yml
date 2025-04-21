@@ -38,15 +38,18 @@ jobs:
       - name: Check if secrets are loaded (App ID & Private Key)
         run: |
           echo ""
-          echo "✅ TANUKI_APP_ID (前3文字): ${{ env.TANUKI_APP_ID:0:3 }}..."
+          echo "✅ TANUKI_APP_ID (前3文字): ${TANUKI_APP_ID:0:3}..."
           echo "✅ TANUKI_APP_ID の行数: $(echo "$TANUKI_APP_ID" | wc -l) 行"
           echo "✅ TANUKI_APP_ID の先頭行: $(echo "$TANUKI_APP_ID" | head -n 1)"
           echo ""
           echo "----- 秘密鍵 (.pem) の検証 -----"
-          echo "✅ TANUKI_PRIVATE_KEY (前3文字): ${{ env.TANUKI_PRIVATE_KEY:0:3 }}..."
+          echo "✅ TANUKI_PRIVATE_KEY (前3文字): ${TANUKI_PRIVATE_KEY:0:3}..."
           echo "✅ TANUKI_PRIVATE_KEY の行数: $(echo "$TANUKI_PRIVATE_KEY" | wc -l) 行"
           echo "✅ TANUKI_PRIVATE_KEY の先頭行: $(echo "$TANUKI_PRIVATE_KEY" | head -n 1)"
           echo "✅ TANUKI_PRIVATE_KEY の末尾行: $(echo "$TANUKI_PRIVATE_KEY" | tail -n 1)"
+        env:
+          TANUKI_APP_ID: ${{ secrets.tanuki_app_id }}
+          TANUKI_PRIVATE_KEY: ${{ secrets.tanuki_private_key }}
 
       - name: Generate GitHub App Token using tibdex/github-app-token
         id: instllation_token
