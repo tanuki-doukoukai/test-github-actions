@@ -62,6 +62,24 @@ jobs:
           git merge --no-edit ${{ env.HEAD_BRANCH }}
           git push origin ${{ env.BASE_BRANCH }}
 
+          COMMIT_SHA=$(git rev-parse HEAD)
+          echo "🔍 Last pushed commit SHA: $COMMIT_SHA"
+
+          AUTHOR_LOGIN=$(curl -s \
+            -H "Authorization: token ${{ steps.installation_token.outputs.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ env.REPO }}/commits/$COMMIT_SHA \
+            | jq -r '.author.login')
+
+          echo "🔍 Commit Author: $AUTHOR_LOGIN"
+
+          if [ "$AUTHOR_LOGIN" = "tanuki-auto-merge[bot]" ]; then
+            echo "✅ Push was performed by GitHub App: $AUTHOR_LOGIN"
+          else
+            echo "⚠️ WARNING: Push was performed by unexpected actor: $AUTHOR_LOGIN"
+            echo "💡 Check if the GitHub App is properly registered under 'Allow specified actors to bypass required pull requests'"
+          fi
+
       - name: Create Conflict Resolution PR
         if: steps.merge_check.outputs.has_conflict == 'true'
         run: |
