@@ -78,15 +78,15 @@ jobs:
           LAST_HUMAN_USER=$(echo "$COMMITS" | jq -r '.[] | select(.author.login != null and (.author.login | test("\\[bot\\]$") | not)) | .author.login' | head -n 1)
 
           echo "📦 Creating Pull Request due to conflict..."
-          curl -s -X POST \
+          cat <<EOF | curl -s -X POST \
             -H "Authorization: token ${{ steps.installation_token.outputs.token }}" \
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ env.REPO }}/pulls \
-            -d @- <<EOF
+            -d @-
 {
   "title": "${{ env.PR_TITLE }}",
   "head": "$FIX_CONFLICT_BRANCH",
   "base": "${{ env.BASE_BRANCH }}",
-  "body": "$(cat "${{ env.PR_BODY_FILE }}")"
+  "body": "$(cat "${{ env.PR_BODY_FILE}")"
 }
 EOF
