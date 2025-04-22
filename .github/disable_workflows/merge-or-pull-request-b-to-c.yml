@@ -12,3 +12,6 @@ jobs:
     with:
       head_branch: staging
       base_branch: develop
+    secrets:
+      tanuki_app_id: ${{ secrets.TANUKI_APP_ID }}
+      tanuki_private_key: ${{ secrets.TANUKI_PRIVATE_KEY }}
