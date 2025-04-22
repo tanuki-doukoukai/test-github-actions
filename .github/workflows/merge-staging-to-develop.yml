@@ -1,0 +1,94 @@
+name: Merge staging to develop with GitHub App
+
+on:
+  workflow_dispatch:
+
+jobs:
+  merge-staging-to-develop:
+    runs-on: ubuntu-latest
+    env:
+      USER_NAME: "github-app[bot]"
+      EMAIL: "github-app[bot]@users.noreply.github.com"
+      REPO: ${{ github.repository }}
+      BASE_BRANCH: develop
+      HEAD_BRANCH: staging
+      PR_TITLE: "[Conflict] staging -> develop"
+      PR_BODY_FILE: .github/pull_request_template.md
+      TANUKI_APP_ID: ${{ secrets.TANUKI_APP_ID }}
+      TANUKI_PRIVATE_KEY: ${{ secrets.TANUKI_PRIVATE_KEY }}
+
+    steps:
+      - name: Generate GitHub App Token using tibdex/github-app-token
+        id: installation_token
+        uses: tibdex/github-app-token@v1
+        with:
+          app_id: ${{ env.TANUKI_APP_ID }}
+          private_key: ${{ env.TANUKI_PRIVATE_KEY }}
+
+      - name: Checkout develop branch
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Reset Remote URL with App Token
+        run: |
+          git remote set-url origin https://x-access-token:${{ steps.installation_token.outputs.token }}@github.com/${{ env.REPO }}.git
+
+      - name: Set up Git config
+        run: |
+          git config user.name "${{ env.USER_NAME }}"
+          git config user.email "${{ env.EMAIL }}"
+
+      - name: Fetch staging branch
+        run: |
+          git fetch origin ${{ env.HEAD_BRANCH }}:${{ env.HEAD_BRANCH }}
+
+      - name: Check for Merge Conflicts
+        id: merge_check
+        run: |
+          if git merge --no-commit ${{ env.HEAD_BRANCH }}; then
+            echo "has_conflict=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_conflict=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Reset Merge State (if needed)
+        run: git reset --merge || true
+
+      - name: Merge and Push (No Conflict)
+        if: steps.merge_check.outputs.has_conflict == 'false'
+        run: |
+          git merge --no-edit ${{ env.HEAD_BRANCH }}
+          git push origin ${{ env.BASE_BRANCH }}
+
+      - name: Create Conflict Resolution PR
+        if: steps.merge_check.outputs.has_conflict == 'true'
+        run: |
+          FIX_CONFLICT_BRANCH=auto/staging-$(date +%s)
+          git checkout -b $FIX_CONFLICT_BRANCH ${{ env.HEAD_BRANCH }}
+          git push origin $FIX_CONFLICT_BRANCH
+
+          COMMITS=$( \
+            curl -s \
+              -H "Authorization: token ${{ steps.installation_token.outputs.token }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ env.REPO }}/commits?sha=${{ env.HEAD_BRANCH }}&per_page=10")
+
+          LAST_HUMAN_USER=$(echo "$COMMITS" | jq -r '.[] | select(.author.login != null and (.author.login | test("\\[bot\\]$") | not)) | .author.login' | head -n 1)
+
+          echo "📦 Creating Pull Request due to conflict..."
+
+          PR_BODY=$(cat "${{ env.PR_BODY_FILE }}")
+
+          curl -s -X POST \
+            -H "Authorization: token ${{ steps.installation_token.outputs.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ env.REPO }}/pulls \
+            -d "$(jq -n \
+              --arg title "${{ env.PR_TITLE }}" \
+              --arg head "$FIX_CONFLICT_BRANCH" \
+              --arg base "${{ env.BASE_BRANCH }}" \
+              --arg body "$PR_BODY" \
+              '{title: $title, head: $head, base: $base, body: $body}')"
+
