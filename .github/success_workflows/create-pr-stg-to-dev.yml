@@ -25,4 +25,3 @@ jobs:
     secrets:
       app_id: ${{ secrets.TANUKI_2_APP_ID }}
       app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
-      github_token: ${{ secrets.GITHUB_TOKEN }}
