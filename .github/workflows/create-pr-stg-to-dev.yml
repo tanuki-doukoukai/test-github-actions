@@ -1,0 +1,27 @@
+name: Create PR staging to develop
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - staging
+
+jobs:
+  create-pr-staging-to-develop:
+    if: >
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.ref != 'develop'
+    uses: ./.github/workflows/create-pull-request.yml
+    with:
+      head_branch: staging
+      base_branch: develop
+      pr_title: "staging -> develop (#${{ github.event.pull_request.number }})"
+      pr_body: |
+        このPRは、以下のPRの変更内容を `develop` ブランチに反映するためのものです。
+
+        - 元PR: #${{ github.event.pull_request.number }}
+
+    secrets:
+      app_id: ${{ secrets.TANUKI_2_APP_ID }}
+      app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
