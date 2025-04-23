@@ -18,8 +18,10 @@ jobs:
       base_branch: staging
       pr_title: "deploy -> staging (#${{ github.event.pull_request.number }})"
       pr_body: >
-        This PR is automatically created
-        - #${{ github.event.pull_request.number }}
+        このPRは、以下のPRの変更内容を `staging` ブランチに反映するためのものです。
+
+        - 元PR: #${{ github.event.pull_request.number }}
+
     secrets:
       app_id: ${{ secrets.TANUKI_2_APP_ID }}
       app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
