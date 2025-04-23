@@ -18,6 +18,22 @@ jobs:
           app-id: ${{ secrets.TANUKI_2_APP_ID }}
           private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
 
+      - name: Print check_runs for debugging
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+
+            const { data: checks } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: pr.head.sha,
+            });
+
+            console.log("🔍 All check_runs:");
+            console.log(JSON.stringify(checks.check_runs, null, 2));
+
       - name: Wait for Status Checks to Pass
         uses: actions/github-script@v7
         with:
@@ -30,7 +46,7 @@ jobs:
               ref: pr.head.sha,
             });
 
-            const ignored = ['Merge PR staging to develop'];
+            const ignored = ['merge-pr-staging-to-develop'];
             const allPassing = checks.check_runs
               .filter(c => !ignored.includes(c.name))
               .every(c => c.status === 'completed' && c.conclusion === 'success');
