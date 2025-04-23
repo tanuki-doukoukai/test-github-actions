@@ -21,7 +21,7 @@ jobs:
       base_branch: ${{ env.BASE_BRANCH }}
       pr_title: "$${ env.HEAD_BRANCH } -> ${{ env.BASE_BRANCH }}(#${{ github.event.pull_request.number }})"
     secrets:
-      app_id: ${{ secrets.TANUKI_APP_ID }}
-      app_private_key: ${{ secrets.TANUKI_PRIVATE_KEY }}
+      app_id: ${{ secrets.TANUKI_2_APP_ID }}
+      app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
 
     
