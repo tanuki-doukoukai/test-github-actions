@@ -30,9 +30,10 @@ jobs:
               ref: pr.head.sha,
             });
 
-            const allPassing = checks.check_runs.every(check =>
-              check.status === 'completed' && check.conclusion === 'success'
-            );
+            const ignored = ['Merge PR staging to develop'];
+            const allPassing = checks.check_runs
+              .filter(c => !ignored.includes(c.name))
+              .every(c => c.status === 'completed' && c.conclusion === 'success');
 
             if (!allPassing) {
               core.setFailed("Not all required checks have passed.");
