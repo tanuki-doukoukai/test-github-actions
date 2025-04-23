@@ -12,6 +12,10 @@ on:
       pr_title:
         required: true
         type: string
+      pr_body:
+        required: false
+        default: ""
+        type: string
     secrets:
       app_id:
         required: true
@@ -72,6 +76,6 @@ jobs:
               --arg title "${{ inputs.pr_title }}" \
               --arg head "$TEMP_HEAD_BRANCH" \
               --arg base "${{ inputs.base_branch }}" \
-              --arg body ".github/pull_request_template.md" \
+              --arg body "${{ inputs.pr_body }}" \
               '{title: $title, head: $head, base: $base, body: $body}')"
 
