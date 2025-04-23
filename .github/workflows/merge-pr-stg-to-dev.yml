@@ -1,0 +1,45 @@
+name: Merge PR staging to develop
+
+on:
+  pull_request:
+    types: 
+      - opened
+    branches:
+      - develop
+
+jobs:
+  merge-pr-staging-to-develop:
+    if: startsWith(github.event.pull_request.head.ref, 'auto/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.TANUKI_2_APP_ID }}
+          private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+
+      - name: Wait for Status Checks to Pass
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const pr = context.payload.pull_request;
+            const { data: checks } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: pr.head.sha,
+            });
+
+            const allPassing = checks.check_runs.every(check =>
+              check.status === 'completed' && check.conclusion === 'success'
+            );
+
+            if (!allPassing) {
+              core.setFailed("Not all required checks have passed.");
+            }
+
+      - name: Merge PR
+        run: |
+          gh pr merge ${{ github.event.pull_request.number }} --merge --delete-branch
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
