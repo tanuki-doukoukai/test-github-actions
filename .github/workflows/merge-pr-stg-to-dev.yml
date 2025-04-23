@@ -46,7 +46,7 @@ jobs:
               ref: pr.head.sha,
             });
 
-            const ignored = ['Merge PR staging to develop'];
+            const ignored = ['merge-pr-staging-to-develop'];
             const allPassing = checks.check_runs
               .filter(c => !ignored.includes(c.name))
               .every(c => c.status === 'completed' && c.conclusion === 'success');
