@@ -14,8 +14,8 @@ jobs:
       HEAD_BRANCH: staging
       PR_TITLE: "[Conflict] staging -> develop"
       PR_BODY_FILE: .github/pull_request_template.md
-      TANUKI_APP_ID: ${{ secrets.TANUKI_APP_ID }}
-      TANUKI_PRIVATE_KEY: ${{ secrets.TANUKI_PRIVATE_KEY }}
+      TANUKI_APP_ID: ${{ secrets.TANUKI_2_APP_ID }}
+      TANUKI_PRIVATE_KEY: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
 
     steps:
       - uses: actions/create-github-app-token@v1
