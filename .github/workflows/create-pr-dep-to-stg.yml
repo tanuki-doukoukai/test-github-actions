@@ -19,11 +19,11 @@ jobs:
       github.event.pull_request.head.ref != env.BASE_BRANCH
     uses: ./.github/workflows/create-pull-request.yml
     with:
-      head_branch: "${{ env.HEAD_BRANCH }}"
-      base_branch: "${{ env.BASE_BRANCH }}"
-      pr_title: "${{ env.HEAD_BRANCH }} -> ${{ env.BASE_BRANCH }} (#${{ github.event.pull_request.number }})"
+      head_branch: deploy
+      base_branch: staging
+      pr_title: "deploy -> staging (#${{ github.event.pull_request.number }})"
       pr_body: |
-        このPRは、以下のPRの変更内容を `${{ env.BASE_BRANCH }}` ブランチに反映するためのものです。
+        このPRは、以下のPRの変更内容を `staging` ブランチに反映するためのものです。
 
         - pr: #${{ github.event.pull_request.number }}
         - author: ${{ github.event.pull_request.user.login }}
@@ -56,4 +56,4 @@ jobs:
             -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ github.repository }}/issues/${{ needs.create-pull-request.outputs.pr_number }}/labels \
-            -d "{\"labels\": [\"${{ env.REVIEW_LABEL }}\"]}"
+            -d "{\"labels\": [\"action-required\"]}"
