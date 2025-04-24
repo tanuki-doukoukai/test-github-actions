@@ -42,7 +42,6 @@ jobs:
 
         - original pr: #${{ needs.extract-pr-info.outputs.original_pr_number }}
         - original author: ${{ needs.extract-pr-info.outputs.original_author }}
-      original_author: ${{ needs.extract-pr-info.outputs.original_author }}
     secrets:
       app_id: ${{ secrets.TANUKI_2_APP_ID }}
       app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
