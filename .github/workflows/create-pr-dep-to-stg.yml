@@ -68,17 +68,21 @@ jobs:
         run: |
           PAYLOAD=$(jq -n \
             --arg title "✅ PR作成 & レビュー依頼 完了" \
-            --arg github_user "${{ github.event.pull_request.user.login }}" \
-            --arg pr_number "${{ github.event.pull_request.number }}" \
-            --arg repo "${{ github.repository }}" \
+            --arg github_user "yannsugi" \
+            --arg pr_number "152" \
+            --arg repo "tanuki-doukoukai/test-github-actions" \
             --arg content "<https://github.com/$repo/pull/$pr_number|PR #$pr_number> を作成しました。\n\n作成者: \`$github_user\`\nレビューのご対応をお願いいたします 🙏" \
             '{title: $title, mentions: [$github_user], content: $content}')
 
           curl -s -X POST \
-            -H "Authorization: Bearer ${{ steps.notify-token.outputs.token }}" \
+            -H "Authorization: Bearer ${{ steps.app-token.outputs.token }}" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/tanuki-doukoukai/test-notify/actions/workflows/slack-notify.yml/dispatches \
-            -d "{\"ref\":\"main\",\"inputs\":{\"payload\":$(echo "$PAYLOAD" | jq -c)}}"
+            -d "$(jq -n \
+              --arg ref "main" \
+              --arg payload "$(echo "$PAYLOAD" | jq -c -r)" \
+              '{ref: $ref, inputs: {payload: $payload}}')"
+
 
       - name: Trigger another workflow
         run: |
