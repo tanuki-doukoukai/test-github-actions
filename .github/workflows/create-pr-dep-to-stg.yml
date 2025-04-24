@@ -7,21 +7,53 @@ on:
     branches:
       - deploy
 
+env:
+  HEAD_BRANCH: deploy
+  BASE_BRANCH: staging
+  REVIEW_LABEL: action-required
+
 jobs:
-  create-pr-deploy-to-staging:
+  create-pull-request:
     if: >
       github.event.pull_request.merged == true &&
-      github.event.pull_request.head.ref != 'staging'
+      github.event.pull_request.head.ref != env.BASE_BRANCH
     uses: ./.github/workflows/create-pull-request.yml
     with:
-      head_branch: deploy
-      base_branch: staging
-      pr_title: "deploy -> staging (#${{ github.event.pull_request.number }})"
+      head_branch: ${{ env.HEAD_BRANCH }}
+      base_branch: ${{ env.BASE_BRANCH }}
+      pr_title: "${{ env.HEAD_BRANCH }} -> ${{ env.BASE_BRANCH }} (#${{ github.event.pull_request.number }})"
       pr_body: |
-        このPRは、以下のPRの変更内容を `staging` ブランチに反映するためのものです。
+        このPRは、以下のPRの変更内容を `${{ env.BASE_BRANCH }}` ブランチに反映するためのものです。
 
-        - 元PR: #${{ github.event.pull_request.number }}
-
+        - pr: #${{ github.event.pull_request.number }}
+        - author: ${{ github.event.pull_request.user.login }}
+      assignees: ${{ github.event.pull_request.user.login }}
     secrets:
       app_id: ${{ secrets.TANUKI_2_APP_ID }}
       app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+
+  request-review-and-labeled:
+    needs: create-pull-request
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.TANUKI_2_APP_ID }}
+          private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+
+      - name: Add reviewer
+        run: |
+          curl -s -X POST \
+            -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/pulls/${{ needs.create-pull-request.outputs.pr_number }}/requested_reviewers \
+            -d "{\"reviewers\": [\"${{ github.event.pull_request.user.login }}\"]}"
+
+      - name: Add label
+        run: |
+          curl -s -X POST \
+            -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ needs.create-pull-request.outputs.pr_number }}/labels \
+            -d "{\"labels\": [\"${{ env.REVIEW_LABEL }}\"]}"
