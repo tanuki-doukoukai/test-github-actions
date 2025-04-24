@@ -18,7 +18,7 @@ jobs:
       base_branch: staging
       pr_title: "deploy -> staging (#${{ github.event.pull_request.number }})"
       pr_body: |
-        このPRは、以下のPRの変更内容を `staging` ブランチに反映するためのものです。
+        このPRは、以下のPRの変更内容を \`staging\` ブランチに反映するためのものです。
 
         - pr: #${{ github.event.pull_request.number }}
         - author: ${{ github.event.pull_request.user.login }}
