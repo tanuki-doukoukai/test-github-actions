@@ -89,16 +89,19 @@ jobs:
         run: |
           BODY=$(printf "%s\n" "${{ inputs.pr_body }}")
 
+          JSON_DATA=$(jq -n \
+            --arg title "${{ inputs.pr_title }}" \
+            --arg head "${{ steps.determine-head.outputs.head_branch }}" \
+            --arg base "${{ inputs.base_branch }}" \
+            --arg body "$BODY" \
+            '{title: $title, head: $head, base: $base, body: $body}')
+
           PR_DATA=$(curl -s -X POST \
             -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ github.repository }}/pulls \
-            -d "$(jq -n \
-              --arg title \"${{ inputs.pr_title }}\" \
-              --arg head \"${{ steps.determine-head.outputs.head_branch }}\" \
-              --arg base \"${{ inputs.base_branch }}\" \
-              --arg body "$BODY" \
-              '{title: $title, head: $head, base: $base, body: $body}')")
+            -d "$JSON_DATA")
+
 
           PR_NUMBER=$(echo "$PR_DATA" | jq -r .number)
           if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
