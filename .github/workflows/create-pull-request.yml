@@ -28,6 +28,10 @@ on:
         required: false
         default: ""
         type: string
+      labels:
+        required: false
+        default: ""
+        type: string
     outputs:
       pr_number:
         description: "Pull request number"
