@@ -55,9 +55,8 @@ jobs:
             --arg content "<https://github.com/$repo/pull/$pr_number|PR #$pr_number> を作成しました。\n\n作成者: \`$github_user\`\nレビューのご対応をお願いいたします 🙏" \
             '{title: $title, mentions: [$github_user], content: $content}')
 
-
           curl -s -X POST \
-            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Authorization: Bearer ${ steps.app-token.outputs.token }" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/tanuki-doukoukai/test-notify/actions/workflows/slack-notify.yml/dispatches \
             -d "{\"ref\":\"main\",\"inputs\":{\"payload\":$(echo "$PAYLOAD" | jq -c)}}"
