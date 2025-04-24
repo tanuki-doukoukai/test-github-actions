@@ -19,8 +19,8 @@ jobs:
       github.event.pull_request.head.ref != env.BASE_BRANCH
     uses: ./.github/workflows/create-pull-request.yml
     with:
-      head_branch: ${{ env.HEAD_BRANCH }}
-      base_branch: ${{ env.BASE_BRANCH }}
+      head_branch: "${{ env.HEAD_BRANCH }}"
+      base_branch: "${{ env.BASE_BRANCH }}"
       pr_title: "${{ env.HEAD_BRANCH }} -> ${{ env.BASE_BRANCH }} (#${{ github.event.pull_request.number }})"
       pr_body: |
         このPRは、以下のPRの変更内容を `${{ env.BASE_BRANCH }}` ブランチに反映するためのものです。
