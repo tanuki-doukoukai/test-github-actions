@@ -8,34 +8,41 @@ on:
       - staging
 
 jobs:
-  create-pull-request:
+  extract-pr-info:
     if: >
       github.event.pull_request.merged == true &&
       github.event.pull_request.head.ref != 'develop'
     runs-on: ubuntu-latest
+    outputs:
+      original_author: ${{ steps.set-output.outputs.original_author }}
+      original_pr_number: ${{ steps.set-output.outputs.original_pr_number }}
     steps:
       - name: Determine PR info
-        id: extract-pr-info
+        id: set-output
         run: |
           if [[ "${{ github.event.pull_request.user.login }}" == *[bot] ]]; then
-            ORIGINAL_AUTHOR=$(echo "${{ github.event.pull_request.body }}" | grep -oE 'original author: [a-zA-Z0-9_-]+' | awk '{print $2}')
+            ORIGINAL_PR_NUMBER=$(echo "${{ github.event.pull_request.body }}" | grep -oE 'original pr: #[0-9]+' | awk '{print $3}' | tr -d '#')
+            ORIGINAL_AUTHOR=$(echo "${{ github.event.pull_request.body }}" | grep -oE 'original author: [a-zA-Z0-9_-]+' | awk '{print $3}')
           else
-            ORIGINAL_AUTHOR=${{ github.event.pull_request.user.login }}
+            ORIGINAL_PR_NUMBER="${{ github.event.pull_request.number }}"
+            ORIGINAL_AUTHOR="${{ github.event.pull_request.user.login }}"
           fi
+          echo "original_pr_number=$ORIGINAL_PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "original_author=$ORIGINAL_AUTHOR" >> "$GITHUB_OUTPUT"
 
-      - name: Call create-pull-request workflow
-        id: call-workflow
-        uses: ./.github/workflows/create-pull-request.yml
-        with:
-          head_branch: staging
-          base_branch: develop
-          pr_title: "staging -> develop (#${{ steps.extract-pr-info.outputs.pr_number }})"
-          pr_body: |
-            このPRは、以下のPRの変更内容を \`develop\` ブランチに反映するためのものです。
+  create-pull-request:
+    needs: extract-pr-info
+    uses: ./.github/workflows/create-pull-request.yml
+    with:
+      head_branch: staging
+      base_branch: develop
+      pr_title: "staging -> develop (#${{ needs.extract-pr-info.outputs.original_pr_number }})"
+      pr_body: |
+        このPRは、以下のPRの変更内容を \`develop\` ブランチに反映するためのものです。
 
-            - pr: #${{ github.event.pull_request.number }}
-            - original author: ${{ steps.extract-pr-info.outputs.original_author }}
-        secrets:
-          app_id: ${{ secrets.TANUKI_2_APP_ID }}
-          app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+        - original pr: #${{ needs.extract-pr-info.outputs.original_pr_number }}
+        - original author: ${{ needs.extract-pr-info.outputs.original_author }}
+      original_author: ${{ needs.extract-pr-info.outputs.original_author }}
+    secrets:
+      app_id: ${{ secrets.TANUKI_2_APP_ID }}
+      app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}

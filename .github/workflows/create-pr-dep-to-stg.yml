@@ -20,7 +20,7 @@ jobs:
       pr_body: |
         このPRは、以下のPRの変更内容を \`staging\` ブランチに反映するためのものです。
 
-        - pr: #${{ github.event.pull_request.number }}
+        - original pr: #${{ github.event.pull_request.number }}
         - original author: ${{ github.event.pull_request.user.login }}
       assignees: ${{ github.event.pull_request.user.login }}
       reviewers: ${{ github.event.pull_request.user.login }}
