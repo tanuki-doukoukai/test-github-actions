@@ -20,7 +20,8 @@ jobs:
       - name: Determine PR info
         id: set-output
         run: |
-          if [[ "${{ github.event.pull_request.user.login }}" == *[bot] ]]; then
+          LOGIN="${{ github.event.pull_request.user.login }}"
+          if echo "$LOGIN" | grep -q '\[bot\]$'; then
             ORIGINAL_PR_NUMBER=$(echo "${{ github.event.pull_request.body }}" | grep -oE 'original pr: #[0-9]+' | awk '{print $3}' | tr -d '#')
             ORIGINAL_AUTHOR=$(echo "${{ github.event.pull_request.body }}" | grep -oE 'original author: [a-zA-Z0-9_-]+' | awk '{print $3}')
           else
