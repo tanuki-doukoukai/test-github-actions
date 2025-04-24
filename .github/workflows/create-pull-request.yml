@@ -82,20 +82,22 @@ jobs:
           else
             HEAD_BRANCH=${{ inputs.head_branch }}
           fi
-          echo "HEAD_BRANCH=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "head_branch=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
 
       - name: Create PR
         id: create-pr
         run: |
+          BODY="${{ inputs.pr_body }}"
+
           PR_DATA=$(curl -s -X POST \
             -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ github.repository }}/pulls \
             -d "$(jq -n \
               --arg title \"${{ inputs.pr_title }}\" \
-              --arg head \"${{ steps.determine-head.outputs.HEAD_BRANCH }}\" \
+              --arg head \"${{ steps.determine-head.outputs.head_branch }}\" \
               --arg base \"${{ inputs.base_branch }}\" \
-              --arg body \"${{ inputs.pr_body }}\" \
+              --arg body "$BODY" \
               '{title: $title, head: $head, base: $base, body: $body}')")
 
           PR_NUMBER=$(echo "$PR_DATA" | jq -r .number)
