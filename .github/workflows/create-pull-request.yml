@@ -87,7 +87,7 @@ jobs:
       - name: Create PR
         id: create-pr
         run: |
-          BODY="${{ inputs.pr_body }}"
+          BODY=$(printf "%s\n" "${{ inputs.pr_body }}")
 
           PR_DATA=$(curl -s -X POST \
             -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
