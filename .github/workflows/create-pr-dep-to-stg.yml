@@ -57,6 +57,13 @@ jobs:
               -H "Accept: application/vnd.github+json" \
               https://api.github.com/repos/tanuki-doukoukai/test-notify
 
+      - uses: actions/create-github-app-token@v1
+        id: notify-token
+        with:
+          app-id: ${{ secrets.TANUKI_2_APP_ID }}
+          private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+          repositories: test-notify
+
       - name: Notify Slack (via another repo)
         run: |
           PAYLOAD=$(jq -n \
@@ -68,7 +75,7 @@ jobs:
             '{title: $title, mentions: [$github_user], content: $content}')
 
           curl -s -X POST \
-            -H "Authorization: Bearer ${{ steps.app-token.outputs.token }}" \
+            -H "Authorization: Bearer ${{ steps.notify-token.outputs.token }}" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/tanuki-doukoukai/test-notify/actions/workflows/slack-notify.yml/dispatches \
             -d "{\"ref\":\"main\",\"inputs\":{\"payload\":$(echo "$PAYLOAD" | jq -c)}}"
@@ -76,7 +83,7 @@ jobs:
       - name: Trigger another workflow
         run: |
           curl -s -X POST \
-            -H "Authorization: Bearer ${{ steps.app-token.outputs.token }}" \
+            -H "Authorization: Bearer ${{ steps.notify-token.outputs.token }}" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/tanuki-doukoukai/test-notify/actions/workflows/test.yml/dispatches \
             -d "{\"ref\":\"main\"}"
