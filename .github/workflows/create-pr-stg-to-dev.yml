@@ -8,20 +8,34 @@ on:
       - staging
 
 jobs:
-  create-pr-staging-to-develop:
+  create-pull-request:
     if: >
       github.event.pull_request.merged == true &&
       github.event.pull_request.head.ref != 'develop'
-    uses: ./.github/workflows/create-pull-request.yml
-    with:
-      head_branch: staging
-      base_branch: develop
-      pr_title: "staging -> develop (#${{ github.event.pull_request.number }})"
-      pr_body: |
-        このPRは、以下のPRの変更内容を `develop` ブランチに反映するためのものです。
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine PR info
+        id: extract-pr-info
+        run: |
+          if [[ "${{ github.event.pull_request.user.login }}" == *[bot] ]]; then
+            ORIGINAL_AUTHOR=$(echo "${{ github.event.pull_request.body }}" | grep -oE 'original author: [a-zA-Z0-9_-]+' | awk '{print $2}')
+          else
+            ORIGINAL_AUTHOR=${{ github.event.pull_request.user.login }}
+          fi
+          echo "original_author=$ORIGINAL_AUTHOR" >> "$GITHUB_OUTPUT"
 
-        - 元PR: #${{ github.event.pull_request.number }}
+      - name: Call create-pull-request workflow
+        id: call-workflow
+        uses: ./.github/workflows/create-pull-request.yml
+        with:
+          head_branch: staging
+          base_branch: develop
+          pr_title: "staging -> develop (#${{ steps.extract-pr-info.outputs.pr_number }})"
+          pr_body: |
+            このPRは、以下のPRの変更内容を \`develop\` ブランチに反映するためのものです。
 
-    secrets:
-      app_id: ${{ secrets.TANUKI_2_APP_ID }}
-      app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+            - pr: #${{ github.event.pull_request.number }}
+            - original author: ${{ steps.extract-pr-info.outputs.original_author }}
+        secrets:
+          app_id: ${{ secrets.TANUKI_2_APP_ID }}
+          app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
