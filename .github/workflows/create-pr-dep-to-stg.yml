@@ -7,16 +7,11 @@ on:
     branches:
       - deploy
 
-env:
-  HEAD_BRANCH: deploy
-  BASE_BRANCH: staging
-  REVIEW_LABEL: action-required
-
 jobs:
   create-pull-request:
     if: >
       github.event.pull_request.merged == true &&
-      github.event.pull_request.head.ref != env.BASE_BRANCH
+      github.event.pull_request.head.ref != "staging"
     uses: ./.github/workflows/create-pull-request.yml
     with:
       head_branch: deploy
