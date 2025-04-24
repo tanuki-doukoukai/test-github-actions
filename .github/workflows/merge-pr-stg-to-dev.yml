@@ -2,7 +2,7 @@ name: Merge PR staging to develop
 
 on:
   pull_request:
-    types: 
+    types:
       - opened
     branches:
       - develop
@@ -18,12 +18,14 @@ jobs:
           app-id: ${{ secrets.TANUKI_2_APP_ID }}
           private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
 
-      - name: Wait for Status Checks to Pass
+      - name: Check if mergeable
+        id: check
         uses: actions/github-script@v7
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
             const pr = context.payload.pull_request;
+
             const { data: checks } = await github.rest.checks.listForRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -35,11 +37,25 @@ jobs:
               .filter(c => !ignored.includes(c.name))
               .every(c => c.status === 'completed' && c.conclusion === 'success');
 
-            if (!allPassing) {
-              core.setFailed("Not all required checks have passed.");
+            let mergeable = false;
+            let retries = 18;
+            while (retries-- > 0) {
+              const { data: prDetails } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+              });
+              if (prDetails.mergeable !== null) {
+                mergeable = prDetails.mergeable === true;
+                break;
+              }
+              await new Promise(resolve => setTimeout(resolve, 10000));
             }
 
-      - name: Checkout base branch
+            core.setOutput('mergeable', allPassing && mergeable);
+
+      - name: checkout base branch
+        if: steps.check.outputs.mergeable == 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.ref }}
@@ -47,7 +63,25 @@ jobs:
           fetch-depth: 0
 
       - name: Merge PR
+        if: steps.check.outputs.mergeable == 'true'
         run: |
           gh pr merge ${{ github.event.pull_request.number }} --merge --delete-branch
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Get original author from PR body
+        if: steps.check.outputs.mergeable == 'false'
+        id: get-original-author
+        run: |
+          BODY="$(gh pr view ${{ github.event.pull_request.number }} --json body -q .body)"
+          ORIGINAL_AUTHOR=$(echo "$BODY" | grep -oE 'original author: [a-zA-Z0-9_-]+' | awk '{print $3}')
+          echo "original_author=$ORIGINAL_AUTHOR" >> "$GITHUB_OUTPUT"
+
+      - name: Request Review
+        if: steps.check.outputs.mergeable == 'false'
+        run: |
+          curl -s -X POST \
+            -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers \
+            -d reviewers='[${{ steps.get-original-author.outputs.original_author }}]'
