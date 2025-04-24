@@ -122,7 +122,7 @@ jobs:
         run: |
           echo "Raw assignees input: '${{ inputs.assignees }}'"
           echo "Split result:"
-          jq -n --arg assignees "${{ inputs.assignees }}" '{assignees: ($assignees | split(","))}'
+          echo "$(jq -n --arg assignees "${{ inputs.assignees }}" '{assignees: ($assignees | split(","))}')" || echo "⚠️ jq failed to parse labels"
 
           curl -s -X POST \
             -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
@@ -135,7 +135,7 @@ jobs:
         run: |
           echo "Raw reviewers input: '${{ inputs.reviewers }}'"
           echo "Split result:"
-          jq -n --arg reviewers "${{ inputs.reviewers }}" '{reviewers: ($reviewers | split(","))}'
+          echo "$(jq -n --arg reviewers "${{ inputs.reviewers }}" '{reviewers: ($reviewers | split(","))}')" || echo "⚠️ jq failed to parse labels"
 
           curl -s -X POST \
             -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
@@ -144,13 +144,14 @@ jobs:
             -d "$(jq -n --arg reviewers \"${{ inputs.reviewers }}\" '{reviewers: ($reviewers | split(","))}')"
 
       - name: Label PR
+        if: ${{ inputs.labels != '' }}
         run: |
           echo "Raw labels input: '${{ inputs.labels }}'"
           echo "Split result:"
-          jq -n --arg labels "${{ inputs.labels }}" '{labels: ($labels | split(","))}'
+          echo "$(jq -n --arg labels "${{ inputs.labels }}" '{labels: ($labels | split(","))}')" || echo "⚠️ jq failed to parse labels"
 
           curl -s -X POST \
             -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ github.repository }}/issues/${{ steps.create-pr.outputs.pr_number }}/labels \
-            -d '{"labels": ["auto pr action required"]}'
+            -d "$(jq -n --arg labels \"${{ inputs.labels }}\" '{labels: ($labels | split(","))}')"
