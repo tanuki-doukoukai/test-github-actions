@@ -101,7 +101,7 @@ jobs:
         run: |
           BODY=$(printf "%s\n" "${{ inputs.pr_body }}")
 
-          PR_JSON=$(jq -n \
+          JSON_DATA=$(jq -n \
             --arg title "${{ inputs.pr_title }}" \
             --arg head "${{ steps.determine-head.outputs.head_branch }}" \
             --arg base "${{ inputs.base_branch }}" \
@@ -112,7 +112,7 @@ jobs:
             -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ github.repository }}/pulls \
-            -d "$PR_JSON")
+            -d "$JSON_DATA")
 
           PR_NUMBER=$(echo "$PR_DATA" | jq -r .number)
           if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
@@ -124,7 +124,11 @@ jobs:
       - name: Assign PR
         if: ${{ inputs.assignees != '' }}
         run: |
+          echo "Raw assignees input: '${{ inputs.assignees }}'"
           ASSIGNEES_JSON=$(jq -n --arg assignees "${{ inputs.assignees }}" '{assignees: ($assignees | split(","))}')
+          echo "Split result: $ASSIGNEES_JSON"
+          echo "$(jq -n --arg assignees "${{ inputs.assignees }}" '{assignees: ($assignees | split(","))}')" || echo "⚠️ jq failed to parse labels"
+
           curl -s -X POST \
             -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
             -H "Accept: application/vnd.github.v3+json" \
@@ -134,7 +138,11 @@ jobs:
       - name: Request Review
         if: ${{ inputs.reviewers != '' }}
         run: |
+          echo "Raw reviewers input: '${{ inputs.reviewers }}'"
           REVIEWERS_JSON=$(jq -n --arg reviewers "${{ inputs.reviewers }}" '{reviewers: ($reviewers | split(","))}')
+          echo "Split result: $REVIEWERS_JSON"
+          echo "$(jq -n --arg reviewers "${{ inputs.reviewers }}" '{reviewers: ($reviewers | split(","))}')" || echo "⚠️ jq failed to parse labels"
+
           curl -s -X POST \
             -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
             -H "Accept: application/vnd.github.v3+json" \
@@ -144,7 +152,11 @@ jobs:
       - name: Label PR
         if: ${{ inputs.labels != '' }}
         run: |
+          echo "Raw labels input: '${{ inputs.labels }}'"
           LABELS_JSON=$(jq -n --arg labels "${{ inputs.labels }}" '{labels: ($labels | split(","))}')
+          echo "Split result: $LABELS_JSON"
+          echo "$(jq -n --arg labels "${{ inputs.labels }}" '{labels: ($labels | split(","))}')" || echo "⚠️ jq failed to parse labels"
+
           curl -s -X POST \
             -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
             -H "Accept: application/vnd.github.v3+json" \
