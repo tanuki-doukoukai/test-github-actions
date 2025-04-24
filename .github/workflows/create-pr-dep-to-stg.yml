@@ -8,7 +8,7 @@ on:
       - deploy
 
 jobs:
-  create-pull-request:
+  create-pr:
     if: >
       github.event.pull_request.merged == true &&
       github.event.pull_request.head.ref != 'staging'
@@ -22,8 +22,25 @@ jobs:
 
         - original pr: #${{ github.event.pull_request.number }}
         - original author: ${{ github.event.pull_request.user.login }}
-      assignees: ${{ github.event.pull_request.user.login }}
-      reviewers: ${{ github.event.pull_request.user.login }}
     secrets:
       app_id: ${{ secrets.TANUKI_2_APP_ID }}
       app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+
+  request-review:
+    needs: create-pr
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.TANUKI_2_APP_ID }}
+          private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+
+      - name: Request Review
+        run: |
+          REVIEWERS_JSON="{\"reviewers\":[\"${{ github.event.pull_request.user.login }}\"]}"
+          curl -s -X POST \
+            -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/pulls/${{ needs.create-pr.outputs.pr_number }}/requested_reviewers \
+            -d "$REVIEWERS_JSON"
