@@ -44,7 +44,14 @@ jobs:
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ github.repository }}/pulls/${{ needs.create-pull-request.outputs.pr_number }}/requested_reviewers \
             -d "$REVIEWERS_JSON"
-      - name: 🔍 Test token access
+
+      - name: 🔍 Test token access test-github-actions
+        run: |
+          curl -s -H "Authorization: Bearer ${{ steps.app-token.outputs.token }}" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/tanuki-doukoukai/test-github-actions
+
+      - name: 🔍 Test token access test-notify
         run: |
           curl -s -H "Authorization: Bearer ${{ steps.app-token.outputs.token }}" \
               -H "Accept: application/vnd.github+json" \
