@@ -72,25 +72,28 @@ jobs:
         run: |
           git fetch origin ${{ inputs.head_branch }}:${{ inputs.head_branch }}
 
-      - name: Create PR
-        id: create-pr
+      - name: Determine HEAD_BRANCH
+        id: determine-head
         run: |
           if [ "${{ inputs.checkout_shadow_head_branch }}" = "true" ]; then
-            SHADOW_HEAD_BRANCH=auto/${{ inputs.head_branch }}-$(date +%s)
-            git checkout -b $SHADOW_HEAD_BRANCH ${{ inputs.head_branch }}
-            git push origin $SHADOW_HEAD_BRANCH
-            HEAD_BRANCH=$SHADOW_HEAD_BRANCH
+            HEAD_BRANCH=auto/${{ inputs.head_branch }}-$(date +%s)
+            git checkout -b $HEAD_BRANCH ${{ inputs.head_branch }}
+            git push origin $HEAD_BRANCH
           else
             HEAD_BRANCH=${{ inputs.head_branch }}
           fi
+          echo "HEAD_BRANCH=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
 
+      - name: Create PR
+        id: create-pr
+        run: |
           PR_DATA=$(curl -s -X POST \
             -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ github.repository }}/pulls \
             -d "$(jq -n \
               --arg title \"${{ inputs.pr_title }}\" \
-              --arg head \"$HEAD_BRANCH\" \
+              --arg head \"${{ steps.determine-head.outputs.HEAD_BRANCH }}\" \
               --arg base \"${{ inputs.base_branch }}\" \
               --arg body \"${{ inputs.pr_body }}\" \
               '{title: $title, head: $head, base: $base, body: $body}')")
@@ -102,10 +105,11 @@ jobs:
           fi
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
 
-          if [ -n "${{ inputs.assignees }}" ]; then
-            curl -s -X POST \
-              -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
-              -H "Accept: application/vnd.github.v3+json" \
-              https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER/assignees \
-              -d "$(jq -n --arg assignees \"${{ inputs.assignees }}\" '{assignees: ($assignees | split(","))}')"
-          fi
+      - name: Assign PR
+        if: ${{ inputs.assignees != '' }}
+        run: |
+          curl -s -X POST \
+            -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ steps.create-pr.outputs.pr_number }}/assignees \
+            -d "$(jq -n --arg assignees \"${{ inputs.assignees }}\" '{assignees: ($assignees | split(","))}')"
