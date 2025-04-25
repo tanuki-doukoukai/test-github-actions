@@ -32,7 +32,7 @@ jobs:
 
             const ignored = ['check-ci']
             const allPassing = checks.check_runs
-              .filter(c => !ignored(includes(c.name))
+              .filter(c => !ignored(includes(c.name)))
               .every(c => c.conclusion === 'success' && cherck.status === 'completed');
             
             if (allPassing) {
