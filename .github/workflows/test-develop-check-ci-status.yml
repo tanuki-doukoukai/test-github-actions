@@ -24,20 +24,24 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
             const pr = context.payload.pull_request;
-            const { data: checks } = await github.rest.checks.ListForRef({
+
+            const { data: checks } = await github.rest.checks.listForRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
               ref: pr.head.sha
             });
 
-            const ignored = ['check-ci']
+            const ignored = ['check-ci'];
             const allPassing = checks.check_runs
-              .filter(c => !ignored(includes(c.name)))
-              .every(c => c.conclusion === 'success' && cherck.status === 'completed');
-            
-            if (allPassing) {
-              core.setFailed("Not all required checks have passed");
+              .filter(c => !ignored.includes(c.name))
+              .every(c => c.conclusion === 'success' && c.status === 'completed');
+
+            if (!allPassing) {
+              core.setFailed("❌ Not all required checks have passed");
+            } else {
+              console.log("✅ All required checks passed");
             }
+
 
             // # const pr = context.payload.pull_request;
             // # const ignored = ['Check CI Status'];
