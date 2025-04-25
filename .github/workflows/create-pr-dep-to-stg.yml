@@ -86,7 +86,7 @@ jobs:
               "client_payload": {
                 "notify_type": "${{ env.NOTIFY_TYPE_ACTION_REQUIRED }}",
                 "author": "${{ github.event.pull_request.user.login }}",
-                "pull_request":{
+                "pull_request": {
                   "number": ${{ needs.create-pull-request.outputs.number }},
                   "title": "${{ needs.create-pull-request.outputs.title }}",
                   "html_url": "${{ needs.create-pull-request.outputs.html_url }}"

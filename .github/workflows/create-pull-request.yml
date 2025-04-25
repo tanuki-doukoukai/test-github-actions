@@ -23,13 +23,13 @@ on:
     outputs:
       number:
         description: "Pull request number"
-        value: ${{ jobs.create-pull-request.outputs.pr_number }}
+        value: ${{ jobs.create-pull-request.outputs.number }}
       title:
         description: "Pull request title"
-        value: ${{ jobs.create-pull-request.outputs.pr_title }}
-      url:
+        value: ${{ jobs.create-pull-request.outputs.title }}
+      html_url:
         description: "Pull request URL"
-        value: ${{ jobs.create-pull-request.outputs.pr_url }}
+        value: ${{ jobs.create-pull-request.outputs.html_url }}
     secrets:
       app_id:
         required: true
