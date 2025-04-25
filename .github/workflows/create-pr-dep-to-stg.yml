@@ -6,19 +6,38 @@ on:
       - closed
     branches:
       - deploy
+env:
+  HEAD_BRANCH: deploy
+  BASE_BRANCH: staging
+  NOTIFY_DISPATCH_REPOSITORIES: test-notify
+  NOTIFY_EVENT_TYPE: test-notify
+  NOTIFY_TYPE_ACTION_REQUIRED: auto-create-pr-merge-action-required
+
 
 jobs:
-  create-pull-request:
+  with-args:
     if: >
       github.event.pull_request.merged == true &&
       github.event.pull_request.head.ref != 'staging'
+    runs-on: ubuntu-latest
+    outputs:
+      head_branch: ${{ steps.set.outputs.head_branch }}
+      base_branch: ${{ steps.set.outputs.base_branch }}
+    steps:
+      - id: set
+        run: |
+          echo "head_branch=${env.HEAD_BRANCH}" >> "$GITHUB_OUTPUT"
+          echo "base_branch=${env.BASE_BRANCH}" >> "$GITHUB_OUTPUT"
+
+  create-pull-request:
+    needs: with-args
     uses: ./.github/workflows/create-pull-request.yml
     with:
-      head_branch: deploy
-      base_branch: staging
-      pr_title: "deploy -> staging (#${{ github.event.pull_request.number }})"
+      head_branch: ${{ needs.with-args.outputs.head_branch }}
+      base_branch: ${{ needs.with-args.outputs.base_branch }}
+      pr_title: "${{ needs.with-args.outputs.head_branch }} -> ${{ needs.with-args.outputs.base_branch }} (#${{ github.event.pull_request.number }})"
       pr_body: |
-        このPRは、以下のPRの変更内容を \`staging\` ブランチに反映するためのものです。
+        このPRは、以下のPRの変更内容を \`${{ needs.with-args.outputs.base_branch }}\` ブランチに反映するためのものです。
 
         - original pr: #${{ github.event.pull_request.number }}
         - original author: ${{ github.event.pull_request.user.login }}
@@ -26,7 +45,7 @@ jobs:
       app_id: ${{ secrets.TANUKI_2_APP_ID }}
       app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
 
-  request-review-and-notify:
+  request-review:
     needs: create-pull-request
     runs-on: ubuntu-latest
     steps:
@@ -45,49 +64,32 @@ jobs:
             https://api.github.com/repos/${{ github.repository }}/pulls/${{ needs.create-pull-request.outputs.pr_number }}/requested_reviewers \
             -d "$REVIEWERS_JSON"
 
-      - name: 🔍 Test token access test-github-actions
-        run: |
-          curl -s -H "Authorization: Bearer ${{ steps.app-token.outputs.token }}" \
-              -H "Accept: application/vnd.github+json" \
-              https://api.github.com/repos/tanuki-doukoukai/test-github-actions
-
-      - name: 🔍 Test token access test-notify
-        run: |
-          curl -s -H "Authorization: Bearer ${{ steps.app-token.outputs.token }}" \
-              -H "Accept: application/vnd.github+json" \
-              https://api.github.com/repos/tanuki-doukoukai/test-notify
-
+  pr-merge-action-required-notify:
+    needs: create-pull-request
+    runs-on: ubuntu-latest
+    steps:
       - uses: actions/create-github-app-token@v1
         id: notify-token
         with:
           app-id: ${{ secrets.TANUKI_2_APP_ID }}
           private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
-          repositories: test-notify
+          repositories: ${{ env.NOTIFY_DISPATCH_REPOSITORIES }}
 
-      - name: Notify Slack (via another repo)
-        run: |
-          PAYLOAD=$(jq -n \
-            --arg title "✅ PR作成 & レビュー依頼 完了" \
-            --arg github_user "yannsugi" \
-            --arg pr_number "152" \
-            --arg repo "tanuki-doukoukai/test-github-actions" \
-            --arg content "レビューのご対応をお願いいたします 🙏" \
-            '{title: $title, mentions: [$github_user], content: $content}')
-
-          curl -s -X POST \
-            -H "Authorization: Bearer ${{ steps.notify-token.outputs.token }}" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/tanuki-doukoukai/test-notify/actions/workflows/slack-notify.yml/dispatches \
-            -d "$(jq -n \
-              --arg ref "main" \
-              --arg payload "$(echo "$PAYLOAD" | jq -c -r)" \
-              '{ref: $ref, inputs: {payload: $payload}}')"
-
-
-      - name: Trigger another workflow
+      - name: Dispatch Notify Workflow
         run: |
           curl -s -X POST \
             -H "Authorization: Bearer ${{ steps.notify-token.outputs.token }}" \
             -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/tanuki-doukoukai/test-notify/actions/workflows/test.yml/dispatches \
-            -d "{\"ref\":\"main\"}"
+            https://api.github.com/repos/${{ github.repository }}/${{ env.NOTIFY_DISPATCH_REPOSITORIES }}/dispatches \
+            -d '{
+              "event_type": "${{ env.NOTIFY_EVENT_TYPE }}",
+              "client_payload": {
+                "notify_type": "${{ env.NOTIFY_TYPE_ACTION_REQUIRED }}",
+                "author": "${{ github.event.pull_request.user.login }}",
+                "pull_request":{
+                  "number": ${{ github.event.pull_request.number }},
+                  "title": "${{ github.event.pull_request.title }}",
+                  "url": "${{ github.event.pull_request.html_url }}",
+                }
+              }
+            }'
