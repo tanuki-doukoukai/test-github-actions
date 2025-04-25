@@ -31,7 +31,16 @@ jobs:
               ref: pr.head.sha,
             });
 
+            if (!checks.check_runs.length) {
+              core.warning("No check runs found for this commit. CI may not have started yet.");
+            }
+
             const ignored = ['check-ci-status'];
+
+            for (const check of checks.check_runs) {
+              console.log(`[CHECK] ${check.name}: ${check.status} / ${check.conclusion}`);
+            }
+
             const allPassing = checks.check_runs
               .filter(c => !ignored.includes(c.name))
               .every(c => c.status === 'completed' && c.conclusion === 'success');
