@@ -1,0 +1,29 @@
+name: Test Another Repository Workflow Dispatch
+
+on:
+  workflow_dispatch:
+
+jobs:
+  call-another-repo-workflow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v1
+        id: notify-token
+        with:
+          app-id: ${{ secrets.TANUKI_2_APP_ID }}
+          private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+          repositories: test-notify
+
+      - name: 🔍 Test token access test-notify
+        run: |
+          curl -s -H "Authorization: Bearer ${{ steps.notify-token.outputs.token }}" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/tanuki-doukoukai/test-notify
+
+      - name: Call another repository workflow
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ steps.notify-token.outputs.token }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/tanuki-doukoukai/test-notify/actions/workflows/test.yml/dispatches \
+            -d '{"ref":"main"}'
