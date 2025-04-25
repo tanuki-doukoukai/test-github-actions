@@ -24,13 +24,14 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
             const pr = context.payload.pull_request;
-            const ignored = ['check-ci-status'];
+            const ignored = ['Check CI Status'];
 
             // 🕒 Polling設定
             const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
-            const maxAttempts = 20;        // 試行回数（最大）
-            const intervalMs = 30000;      // 各試行の待機時間（30秒）
-            const totalWait = (maxAttempts * intervalMs) / 1000 / 60; // 合計最大待機時間（分）
+            const maxAttempts = 30;        // 試行回数（最大30回）
+            const intervalMs = 20000;      // 各試行の待機時間（20秒）
+            const totalWait = (maxAttempts * intervalMs) / 1000 / 60; // 合計最大待機時間（10分）
+
             console.log(`🔁 Polling for up to ${totalWait} minutes (${maxAttempts} attempts, ${intervalMs / 1000}s interval)`);
 
             let allPassing = false;
@@ -67,7 +68,6 @@ jobs:
 
             core.setOutput('ci_passed', allPassing);
             console.log(`✅ Final CI status: ${allPassing ? 'PASSED' : 'FAILED or TIMEOUT'}`);
-
 
       - name: Echo result
         run: echo "CI Passed? -> ${{ steps.check.outputs.ci_passed }}"
