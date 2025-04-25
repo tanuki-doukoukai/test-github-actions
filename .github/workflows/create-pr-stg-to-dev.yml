@@ -9,7 +9,7 @@ on:
 env:
   HEAD_BRANCH: staging
   BASE_BRANCH: develop
-  IGNORE_CHECK_CI_STATUS_WORKFLOW: ['Create PR staging to develop']
+  IGNORE_CHECK_CI_STATUS_WORKFLOW: "Create PR staging to develop"
   NOTIFY_DISPATCH_REPOSITORIES: test-notify
   NOTIFY_EVENT_TYPE: test-notify
   NOTIFY_TYPE_CONFLICT: auto-create-pr-conflict
