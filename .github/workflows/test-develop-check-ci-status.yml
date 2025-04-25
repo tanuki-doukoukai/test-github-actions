@@ -7,7 +7,7 @@ on:
 
 jobs:
   check-ci:
-    # if: startsWith(github.head_ref, 'auto/')
+    if: startsWith(github.head_ref, 'auto/')
     runs-on: ubuntu-latest
     steps:
       - name: Create token for GitHub Script
@@ -24,53 +24,69 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
             const pr = context.payload.pull_request;
-            const ignored = ['Check CI Status'];
+            const { data: checks } = await github.rest.checks.ListForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: pr.head.sha
+            });
 
-            // 🕒 Polling設定
-            const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
-            const maxAttempts = 30;        // 試行回数（最大30回）
-            const intervalMs = 20000;      // 各試行の待機時間（20秒）
-            const totalWait = (maxAttempts * intervalMs) / 1000 / 60; // 合計最大待機時間（10分）
-
-            console.log(`🔁 Polling for up to ${totalWait} minutes (${maxAttempts} attempts, ${intervalMs / 1000}s interval)`);
-
-            let allPassing = false;
-
-            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-              console.log(`⏳ Polling attempt ${attempt}/${maxAttempts}...`);
-
-              const { data } = await github.rest.actions.listWorkflowRunsForRepo({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                per_page: 50
-              });
-
-              const runs = data.workflow_runs.filter(run =>
-                run.head_sha === pr.head.sha &&
-                !ignored.includes(run.name)
-              );
-
-              if (runs.length === 0) {
-                core.warning("No workflow runs found for this commit.");
-              }
-
-              for (const run of runs) {
-                console.log(`[WORKFLOW] ${run.name}: ${run.status} / ${run.conclusion}`);
-              }
-
-              const allCompleted = runs.every(run => run.status === 'completed');
-              const allSuccessful = runs.every(run => run.conclusion === 'success');
-
-              if (allCompleted) {
-                allPassing = allSuccessful;
-                break;
-              }
-
-              await wait(intervalMs);
+            const ignored = ['check-ci']
+            const allPassing = checks.check_runs
+              .filter(c => !ignored(includes(c.name))
+              .every(c => c.conclusion === 'success' && cherck.status === 'completed');
+            
+            if (allPassing) {
+              core.setFailed("Not all required checks have passed");
             }
 
-            core.setOutput('ci_passed', allPassing);
-            console.log(`✅ Final CI status: ${allPassing ? 'PASSED' : 'FAILED or TIMEOUT'}`);
+            // # const pr = context.payload.pull_request;
+            // # const ignored = ['Check CI Status'];
+
+            // # // 🕒 Polling設定
+            // # const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+            // # const maxAttempts = 30;        // 試行回数（最大30回）
+            // # const intervalMs = 20000;      // 各試行の待機時間（20秒）
+            // # const totalWait = (maxAttempts * intervalMs) / 1000 / 60; // 合計最大待機時間（10分）
+
+            // # console.log(`🔁 Polling for up to ${totalWait} minutes (${maxAttempts} attempts, ${intervalMs / 1000}s interval)`);
+
+            // # let allPassing = false;
+
+            // # for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            // #   console.log(`⏳ Polling attempt ${attempt}/${maxAttempts}...`);
+
+            // #   const { data } = await github.rest.actions.listWorkflowRunsForRepo({
+            // #     owner: context.repo.owner,
+            // #     repo: context.repo.repo,
+            // #     per_page: 50
+            // #   });
+
+            // #   const runs = data.workflow_runs.filter(run =>
+            // #     run.head_sha === pr.head.sha &&
+            // #     !ignored.includes(run.name)
+            // #   );
+
+            // #   if (runs.length === 0) {
+            // #     core.warning("No workflow runs found for this commit.");
+            // #   }
+
+            // #   for (const run of runs) {
+            // #     console.log(`[WORKFLOW] ${run.name}: ${run.status} / ${run.conclusion}`);
+            // #   }
+
+            // #   const allCompleted = runs.every(run => run.status === 'completed');
+            // #   const allSuccessful = runs.every(run => run.conclusion === 'success');
+
+            // #   if (allCompleted) {
+            // #     allPassing = allSuccessful;
+            // #     break;
+            // #   }
+
+            // #   await wait(intervalMs);
+            // # }
+
+            // # core.setOutput('ci_passed', allPassing);
+            // # console.log(`✅ Final CI status: ${allPassing ? 'PASSED' : 'FAILED or TIMEOUT'}`);
 
       - name: Echo result
         run: echo "CI Passed? -> ${{ steps.check.outputs.ci_passed }}"
