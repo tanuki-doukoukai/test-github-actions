@@ -89,7 +89,7 @@ jobs:
                 "pull_request":{
                   "number": ${{ github.event.pull_request.number }},
                   "title": "${{ github.event.pull_request.title }}",
-                  "url": "${{ github.event.pull_request.html_url }}",
+                  "url": "${{ github.event.pull_request.html_url }}"
                 }
               }
             }'
