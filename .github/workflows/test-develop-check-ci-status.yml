@@ -17,36 +17,57 @@ jobs:
           app-id: ${{ secrets.TANUKI_2_APP_ID }}
           private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
 
-      - name: Check if CI Passed
-        id: check
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          script: |
-            const pr = context.payload.pull_request;
+- name: Check if CI Passed
+  id: check
+  uses: actions/github-script@v7
+  with:
+    github-token: ${{ steps.app-token.outputs.token }}
+    script: |
+      const pr = context.payload.pull_request;
+      const ignored = ['check-ci-status'];
 
-            const { data: checks } = await github.rest.checks.listForRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: pr.head.sha,
-            });
+      // 🕒 Polling設定
+      const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+      const maxAttempts = 20;        // 試行回数（最大）
+      const intervalMs = 30000;      // 各試行の待機時間（30秒）
+      const totalWait = (maxAttempts * intervalMs) / 1000 / 60; // 合計最大待機時間（分）
+      console.log(`🔁 Polling for up to ${totalWait} minutes (${maxAttempts} attempts, ${intervalMs / 1000}s interval)`);
 
-            if (!checks.check_runs.length) {
-              core.warning("No check runs found for this commit. CI may not have started yet.");
-            }
+      let allPassing = false;
 
-            const ignored = ['check-ci-status'];
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        console.log(`⏳ Polling attempt ${attempt}/${maxAttempts}...`);
 
-            for (const check of checks.check_runs) {
-              console.log(`[CHECK] ${check.name}: ${check.status} / ${check.conclusion}`);
-            }
+        const { data: checks } = await github.rest.checks.listForRef({
+          owner: context.repo.owner,
+          repo: context.repo.repo,
+          ref: pr.head.sha,
+        });
 
-            const allPassing = checks.check_runs
-              .filter(c => !ignored.includes(c.name))
-              .every(c => c.status === 'completed' && c.conclusion === 'success');
+        if (!checks.check_runs.length) {
+          core.warning("No check runs found for this commit.");
+        }
 
-            core.setOutput('ci_passed', allPassing);
-            console.log(`✅ CI passed: ${allPassing}`);
+        for (const check of checks.check_runs) {
+          console.log(`[CHECK] ${check.name}: ${check.status} / ${check.conclusion}`);
+        }
+
+        const relevantChecks = checks.check_runs.filter(c => !ignored.includes(c.name));
+
+        const allCompleted = relevantChecks.every(c => c.status === 'completed');
+        const allSuccessful = relevantChecks.every(c => c.conclusion === 'success');
+
+        if (allCompleted) {
+          allPassing = allSuccessful;
+          break;
+        }
+
+        await wait(intervalMs);
+      }
+
+      core.setOutput('ci_passed', allPassing);
+      console.log(`✅ Final CI status: ${allPassing ? 'PASSED' : 'FAILED or TIMEOUT'}`);
+
 
       - name: Echo result
         run: echo "CI Passed? -> ${{ steps.check.outputs.ci_passed }}"
