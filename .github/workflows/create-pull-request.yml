@@ -40,9 +40,9 @@ jobs:
   create-pull-request:
     runs-on: ubuntu-latest
     outputs:
-      pr_number: ${{ steps.create-pr.outputs.pr_number }}
-      pr_title: ${{ steps.create-pr.outputs.pr_title }}
-      pr_url: ${{ steps.create-pr.outputs.pr_url }}
+      number: ${{ steps.create-pr.outputs.pr_number }}
+      title: ${{ steps.create-pr.outputs.pr_title }}
+      html_url: ${{ steps.create-pr.outputs.pr_html_url }}
     steps:
       - name: Validate branches
         run: |
@@ -110,9 +110,15 @@ jobs:
             -d "$PR_JSON")
 
           PR_NUMBER=$(echo "$PR_DATA" | jq -r .number)
+          PR_TITLE=$(echo "$PR_DATA" | jq -r .title)
+          PR_HTML_URL=$(echo "$PR_DATA" | jq -r .html_url)
+
           if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
             echo "Failed to create PR or retrieve PR number." >&2
             exit 1
           fi
+
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "pr_title=$PR_TITLE" >> "$GITHUB_OUTPUT"
+          echo "pr_html_url=$PR_HTML_URL" >> "$GITHUB_OUTPUT"
 

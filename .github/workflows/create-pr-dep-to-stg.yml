@@ -87,9 +87,9 @@ jobs:
                 "notify_type": "${{ env.NOTIFY_TYPE_ACTION_REQUIRED }}",
                 "author": "${{ github.event.pull_request.user.login }}",
                 "pull_request":{
-                  "number": ${{ github.event.pull_request.number }},
-                  "title": "${{ github.event.pull_request.title }}",
-                  "url": "${{ github.event.pull_request.html_url }}"
+                  "number": ${{ needs.create-pull-request.outputs.number }},
+                  "title": "${{ needs.create-pull-request.outputs.title }}",
+                  "html_url": "${{ needs.create-pull-request.outputs.html_url }}"
                 }
               }
             }'
