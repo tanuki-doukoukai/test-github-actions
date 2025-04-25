@@ -17,7 +17,7 @@ jobs:
           app-id: ${{ secrets.TANUKI_2_APP_ID }}
           private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
 
-      - name: Check if CI Passed
+      - name: Check if CI Passed (via workflow runs)
         id: check
         uses: actions/github-script@v7
         with:
@@ -39,24 +39,27 @@ jobs:
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
               console.log(`⏳ Polling attempt ${attempt}/${maxAttempts}...`);
 
-              const { data: checks } = await github.rest.checks.listForRef({
+              const { data } = await github.rest.actions.listWorkflowRunsForRepo({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                ref: pr.head.sha,
+                per_page: 50
               });
 
-              if (!checks.check_runs.length) {
-                core.warning("No check runs found for this commit.");
+              const runs = data.workflow_runs.filter(run =>
+                run.head_sha === pr.head.sha &&
+                !ignored.includes(run.name)
+              );
+
+              if (runs.length === 0) {
+                core.warning("No workflow runs found for this commit.");
               }
 
-              for (const check of checks.check_runs) {
-                console.log(`[CHECK] ${check.name}: ${check.status} / ${check.conclusion}`);
+              for (const run of runs) {
+                console.log(`[WORKFLOW] ${run.name}: ${run.status} / ${run.conclusion}`);
               }
 
-              const relevantChecks = checks.check_runs.filter(c => !ignored.includes(c.name));
-
-              const allCompleted = relevantChecks.every(c => c.status === 'completed');
-              const allSuccessful = relevantChecks.every(c => c.conclusion === 'success');
+              const allCompleted = runs.every(run => run.status === 'completed');
+              const allSuccessful = runs.every(run => run.conclusion === 'success');
 
               if (allCompleted) {
                 allPassing = allSuccessful;
