@@ -21,9 +21,15 @@ on:
         default: true
         type: boolean
     outputs:
-      pr_number:
+      number:
         description: "Pull request number"
         value: ${{ jobs.create-pull-request.outputs.pr_number }}
+      title:
+        description: "Pull request title"
+        value: ${{ jobs.create-pull-request.outputs.pr_title }}
+      url:
+        description: "Pull request URL"
+        value: ${{ jobs.create-pull-request.outputs.pr_url }}
     secrets:
       app_id:
         required: true
@@ -35,7 +41,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       pr_number: ${{ steps.create-pr.outputs.pr_number }}
-
+      pr_title: ${{ steps.create-pr.outputs.pr_title }}
+      pr_url: ${{ steps.create-pr.outputs.pr_url }}
     steps:
       - name: Validate branches
         run: |
