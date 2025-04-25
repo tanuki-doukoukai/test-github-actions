@@ -1,0 +1,43 @@
+name: Check CI Status
+
+on:
+  pull_request:
+    branches: [develop]
+    types: [opened]
+
+jobs:
+  check-ci:
+    if: startsWith(github.head_ref, 'auto/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create token for GitHub Script
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.TANUKI_2_APP_ID }}
+          private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+
+      - name: Check if CI Passed
+        id: check
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const pr = context.payload.pull_request;
+
+            const { data: checks } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: pr.head.sha,
+            });
+
+            const ignored = ['check-ci-status'];
+            const allPassing = checks.check_runs
+              .filter(c => !ignored.includes(c.name))
+              .every(c => c.status === 'completed' && c.conclusion === 'success');
+
+            core.setOutput('ci_passed', allPassing);
+            console.log(`✅ CI passed: ${allPassing}`);
+
+      - name: Echo result
+        run: echo "CI Passed? -> ${{ steps.check.outputs.ci_passed }}"
