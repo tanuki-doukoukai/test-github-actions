@@ -26,8 +26,8 @@ jobs:
     steps:
       - id: set
         run: |
-          echo "head_branch=${env.HEAD_BRANCH}" >> "$GITHUB_OUTPUT"
-          echo "base_branch=${env.BASE_BRANCH}" >> "$GITHUB_OUTPUT"
+          echo "head_branch=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "base_branch=$BASE_BRANCH" >> "$GITHUB_OUTPUT"
 
   create-pull-request:
     needs: with-args
