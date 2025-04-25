@@ -29,6 +29,6 @@ jobs:
             -d '{
               "event_type": "test-repository-dispatch",
               "client_payload": {
-                "content": \"通知でやんすよ\"
+                "content": "通知でやんすよ"
               }
             }'
