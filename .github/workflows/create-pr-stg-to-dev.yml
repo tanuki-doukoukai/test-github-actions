@@ -121,14 +121,14 @@ jobs:
         id: check
         env:
           PR_NUMBER: ${{ needs.create-pull-request.outputs.number }}
-          IGNORED_WORKFLOW: ${ env.IGNORE_CHECK_CI_STATUS_WORKFLOW }
+          IGNORED_WORKFLOW: ${{ env.IGNORE_CHECK_CI_STATUS_WORKFLOW }}
           APP_TOKEN: ${{ needs.create-app-token.outputs.token }}
         run: |
           bash .github/scripts/check-all-ci-success.sh
 
   merge-pull-request:
     needs: [create-pull-request, check-ci-status]
-    if: needs.check-mergeable.outputs.mergeable == 'true' && \
+    if: needs.check-mergeable.outputs.mergeable == 'true' && 
         needs.check-ci-status.outputs.ci_passed == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -140,7 +140,7 @@ jobs:
 
   request-review:
     needs: [create-pull-request, check-ci-status]
-    if: needs.check-mergeable.outputs.mergeable == 'false' || \
+    if: needs.check-mergeable.outputs.mergeable == 'false' || 
         needs.check-ci-status.outputs.ci_passed == 'false'
     runs-on: ubuntu-latest
     steps:
@@ -161,7 +161,7 @@ jobs:
 
   dispatch-notify:
     needs: [create-pull-request, check-ci-status]
-    if: needs.check-mergeable.outputs.mergeable == 'false' || \
+    if: needs.check-mergeable.outputs.mergeable == 'false' || 
         needs.check-ci-status.outputs.ci_passed == 'false'
     runs-on: ubuntu-latest
     steps:
