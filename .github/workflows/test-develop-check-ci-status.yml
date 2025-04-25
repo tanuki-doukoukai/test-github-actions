@@ -7,7 +7,7 @@ on:
 
 jobs:
   check-ci:
-    if: startsWith(github.head_ref, 'auto/')
+    # if: startsWith(github.head_ref, 'auto/')
     runs-on: ubuntu-latest
     steps:
       - name: Create token for GitHub Script
