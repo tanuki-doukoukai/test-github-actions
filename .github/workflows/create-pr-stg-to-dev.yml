@@ -126,19 +126,17 @@ jobs:
             echo "required_action_type=${{ env.REQUIRED_ACTION_TYPE_CONFLICT }}" >> "$GITHUB_OUTPUT"
           elif [ "${{ steps.check-ci.outputs.ci_passed }}" = "false" ]; then
             echo "required_action_type=${{ env.REQUIRED_ACTION_TYPE_FAIL_CI }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "required_action_type=none" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Merge Pull Request
-        if: steps.required-action.outputs.required_action_type == 'none'
+        if: steps.required-action.outputs.required_action_type == ''
         run: |
           gh pr merge ${{ needs.create-pull-request.outputs.number }} --merge --delete-branch
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Request Review
-        if: steps.required-action.outputs.required_action_type != 'none'
+        if: steps.required-action.outputs.required_action_type != ''
         run: |
           REVIEWERS_JSON="{\"reviewers\":[\"${{ needs.extract-pr-info.outputs.original_author }}\"]}"
           curl -s -X POST \
@@ -152,7 +150,7 @@ jobs:
       - extract-pr-info
       - create-pull-request
       - merge-pr-or-review
-    if: needs.merge-pr-or-review.outputs.required_action_type != 'none'
+    if: needs.merge-pr-or-review.outputs.required_action_type != ''
     runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@v1
