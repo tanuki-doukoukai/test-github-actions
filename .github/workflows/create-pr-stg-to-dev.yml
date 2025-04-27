@@ -106,7 +106,9 @@ jobs:
       app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
 
   check-ci-status:
-    needs: create-pull-request
+    needs: 
+      - create-app-token
+      - create-pull-request
     runs-on: ubuntu-latest
     outputs:
       ci_passed: ${{ steps.check.outputs.ci_passed }}
