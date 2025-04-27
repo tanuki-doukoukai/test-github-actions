@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Sleep a bit...
-        run: sleep 20
+        run: sleep 550
 
-      - name: Fail intentionally
-        run: exit 1
+      # - name: Fail intentionally
+      #   run: exit 1
 
       # === 成功パターン（今は使わない）===
-      # - name: Succeed intentionally
-      #   run: echo "CI passed successfully"
+      - name: Succeed intentionally
+        run: echo "CI passed successfully"

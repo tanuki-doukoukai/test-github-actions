@@ -146,7 +146,9 @@ jobs:
             -d "$REVIEWERS_JSON"
 
   dispatch-notify:
-    needs: merge-pr-or-review
+    needs: 
+      - merge-pr-or-review
+      - create-pull-request
     if: needs.merge-pr-or-review.outputs.required_action_type != 'none'
     runs-on: ubuntu-latest
     steps:
