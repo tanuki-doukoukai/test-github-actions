@@ -76,7 +76,7 @@ jobs:
       - create-pull-request
     runs-on: ubuntu-latest
     outputs:
-      required_action_type: ${{ steps.require-action.outputs.required_action_type }}
+      required_action_type: ${{ steps.required-action.outputs.required_action_type }}
     steps:
       - id: app-token
         uses: actions/create-github-app-token@v1
