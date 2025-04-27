@@ -108,7 +108,7 @@ jobs:
           sudo apt-get install -y jq gh
 
       - name: Check CI
-        if: steps.check-merge.outputs.mergeable == 'false'
+        if: steps.check-merge.outputs.mergeable == 'true'
         id: check-ci
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
