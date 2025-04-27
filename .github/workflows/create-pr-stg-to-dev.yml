@@ -110,6 +110,7 @@ jobs:
       - name: Check CI
         id: check-ci
         env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ needs.create-pull-request.outputs.number }}
           IGNORED_WORKFLOW: ${{ env.IGNORE_CHECK_CI_STATUS_WORKFLOW }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
