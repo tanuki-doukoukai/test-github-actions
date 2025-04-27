@@ -71,7 +71,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.with-args.outputs.base_branch }}
-          token: ${{ needs.create-app-token.outputs.token }}
           fetch-depth: 0
 
       - name: Fetch head branch
