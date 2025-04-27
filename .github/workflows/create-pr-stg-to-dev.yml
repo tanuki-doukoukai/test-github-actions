@@ -12,8 +12,8 @@ env:
   IGNORE_CHECK_CI_STATUS_WORKFLOW: "Create PR staging to develop"
   NOTIFY_DISPATCH_REPOSITORIES: test-notify
   NOTIFY_EVENT_TYPE: test-notify
-  NOTIFY_TYPE_CONFLICT: auto-create-pr-conflict
-  NOTIFY_TYPE_FAIL_CI: auto-create-pr-fail-ci
+  REQUIRED_ACTION_TYPE_CONFLICT: auto-create-pr-conflict
+  REQUIRED_ACTION_TYPE_FAIL_CI: auto-create-pr-fail-ci
 
 jobs:
   with-args:
@@ -51,48 +51,10 @@ jobs:
           echo "original_pr_number=$ORIGINAL_PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "original_author=$ORIGINAL_AUTHOR" >> "$GITHUB_OUTPUT"
 
-  create-app-token:
-    needs: with-args
-    runs-on: ubuntu-latest
-    outputs:
-      token: ${{ steps.app-token.outputs.token }}
-    steps:
-      - id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.TANUKI_2_APP_ID }}
-          private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
-
-  check-mergeable:
-    needs: create-app-token
-    runs-on: ubuntu-latest
-    outputs:
-      mergeable: ${{ steps.merge_check.outputs.mergeable }}
-    steps:
-      - name: Checkout base branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.with-args.outputs.base_branch }}
-          fetch-depth: 0
-
-      - name: Fetch head branch
-        run: |
-          git fetch origin ${{ needs.with-args.outputs.head_branch }}:${{ needs.with-args.outputs.head_branch }}
-
-      - name: Check for Merge Conflicts
-        id: merge_check
-        run: |
-          if git merge --no-commit ${{ needs.with-args.outputs.head_branch }}; then
-            echo "mergeable=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "mergeable=false" >> "$GITHUB_OUTPUT"
-          fi
-
   create-pull-request:
     needs:
       - with-args
       - extract-pr-info
-      - check-mergeable
     uses: ./.github/workflows/create-pull-request.yml
     with:
       head_branch: ${{ needs.with-args.outputs.head_branch }}
@@ -107,24 +69,44 @@ jobs:
       app_id: ${{ secrets.TANUKI_2_APP_ID }}
       app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
 
-  check-ci-status:
-    needs: 
-      - create-app-token
-      - create-pull-request
+  merge-pr-or-review:
+    needs: with-args
     runs-on: ubuntu-latest
     outputs:
-      ci_passed: ${{ steps.check.outputs.ci_passed }}
+      required_action_type: ${{ steps.merge_check.outputs.required_action_type }}
     steps:
-      - name: Checkout
+      - id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.TANUKI_2_APP_ID }}
+          private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+
+      - name: Checkout base branch
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.with-args.outputs.base_branch }}
+          fetch-depth: 0
+
+      - name: Fetch head branch
+        run: |
+          git fetch origin ${{ needs.with-args.outputs.head_branch }}:${{ needs.with-args.outputs.head_branch }}
+
+      - name: Check Merge
+        id: check-merge
+        run: |
+          if git merge --no-commit ${{ needs.with-args.outputs.head_branch }}; then
+            echo "mergeable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "mergeable=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install jq and gh
         run: |
           sudo apt-get update
           sudo apt-get install -y jq gh
 
-      - name: Check all CI passing
-        id: check
+      - name: Check CI
+        id: check-ci
         env:
           PR_NUMBER: ${{ needs.create-pull-request.outputs.number }}
           IGNORED_WORKFLOW: ${{ env.IGNORE_CHECK_CI_STATUS_WORKFLOW }}
@@ -132,36 +114,26 @@ jobs:
         run: |
           bash .github/scripts/check-all-ci-success.sh
 
-  merge-pull-request:
-    needs:
-      - create-app-token
-      - create-pull-request
-      - check-mergeable
-      - check-ci-status
-    if: >
-      needs.check-mergeable.outputs.mergeable == 'true' && 
-      needs.check-ci-status.outputs.ci_passed == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Merge Pull Request
+      - name: Determine required action
+        id: required-action
         run: |
-          gh pr merge ${{ needs.create-pull-request.outputs.number }} --merge
+          if [ "${{ steps.check-merge.outputs.mergeable }}" = "false" ]; then
+            echo "required_action_type=${{ env.REQUIRED_ACTION_TYPE_CONFLICT }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.check-ci.outputs.ci_passed }}" = "false" ]; then
+            echo "required_action_type=${{ env.REQUIRED_ACTION_TYPE_FAIL_CI }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "required_action_type=none" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Merge Pull Request
+        if: steps.required-action.outputs.required_action_type == 'none'
+        run: |
+          gh pr merge ${{ needs.create-pull-request.outputs.number }} --merge --delete-branch
         env:
           GITHUB_TOKEN: ${{ needs.create-app-token.outputs.token }}
 
-  request-review:
-    needs:
-      - extract-pr-info
-      - create-app-token
-      - create-pull-request
-      - check-mergeable
-      - check-ci-status
-    if: >
-      needs.check-mergeable.outputs.mergeable == 'false' || 
-      needs.check-ci-status.outputs.ci_passed == 'false'
-    runs-on: ubuntu-latest
-    steps:
       - name: Request Review
+        if: steps.required-action.outputs.required_action_type != 'none'
         run: |
           REVIEWERS_JSON="{\"reviewers\":[\"${{ needs.extract-pr-info.outputs.original_author }}\"]}"
           curl -s -X POST \
@@ -171,29 +143,10 @@ jobs:
             -d "$REVIEWERS_JSON"
 
   dispatch-notify:
-    needs:
-      - extract-pr-info
-      - create-app-token
-      - create-pull-request
-      - check-mergeable
-      - check-ci-status
-    if: >
-      needs.check-mergeable.outputs.mergeable == 'false' || 
-      needs.check-ci-status.outputs.ci_passed == 'false'
+    needs:merge-pr-or-review
+    if: needs.merge-pr-or-review.outputs.required_action_type != 'none'
     runs-on: ubuntu-latest
     steps:
-      - name: Determine Notify Type
-        id: notify-type
-        run: |
-          if [ "${{ needs.check-mergeable.outputs.mergeable }}" = "false" ]; then
-            echo "notify_type=${{ env.NOTIFY_TYPE_CONFLICT }}" >> "$GITHUB_OUTPUT"
-          elif [ "${{ needs.check-ci-status.outputs.ci_passed }}" = "false" ]; then
-            echo "notify_type=${{ env.NOTIFY_TYPE_FAIL_CI }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "::error::Failed to determine notify_type"
-            exit 1
-          fi
-
       - uses: actions/create-github-app-token@v1
         id: notify-token
         with:
@@ -210,7 +163,7 @@ jobs:
             -d '{
               "event_type": "${{ env.NOTIFY_EVENT_TYPE }}",
               "client_payload": {
-                "notify_type": "${{ steps.notify-type.outputs.notify_type }}",
+                "notify_type": "${{ needs.merge-pr-or-review.outputs.required_action_type }}",
                 "author": "${{ needs.extract-pr-info.outputs.original_author }}",
                 "pull_request": {
                   "number": ${{ needs.create-pull-request.outputs.number }},
