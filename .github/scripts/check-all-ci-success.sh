@@ -57,7 +57,7 @@ for (( i=1; i<=MAX_ATTEMPTS; i++ )); do
 
   if [[ "$COMPLETED" == "true" ]]; then
     if [[ "$SUCCESSFUL" == "true" ]]; then
-      echo "✅ All CIs passed!"
+      echo "✅ All CI checks passed!"
       echo "ci_passed=true" >> "$GITHUB_OUTPUT"
     else
       echo "❌ Some CI checks failed!"
@@ -71,4 +71,4 @@ done
 
 echo "❌ CI polling timed out"
 echo "ci_passed=false" >> "$GITHUB_OUTPUT"
-exit 1
+exit 0
