@@ -5,8 +5,9 @@ set -euo pipefail
 echo "🧠 Running check-all-ci-success script..."
 
 # 必須環境変数の確認
-: "${IGNORED_WORKFLOW:?Missing IGNORED_WORKFLOW}"
+: "${GITHUB_REPOSITORY:?Missing GITHUB_REPOSITORY}"
 : "${PR_NUMBER:?Missing PR_NUMBER}"
+: "${IGNORED_WORKFLOW:?Missing IGNORED_WORKFLOW}"
 
 # GITHUB_OUTPUT がない環境用の保険（例：ローカル実行時）
 GITHUB_OUTPUT=${GITHUB_OUTPUT:-/dev/null}
