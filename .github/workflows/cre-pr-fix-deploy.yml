@@ -6,25 +6,30 @@ on:
       - fix-deploy
 
 jobs:
-  create-fix-deploy-pr:
+  create-pull-request:
+    uses: ./.github/workflows/create-pull-request.yml
+    with:
+      head_branch: fix-deploy
+      base_branch: deploy
+      pr_title: "fix-deploy -> deploy"
+      pr_body: |
+        このPRは、\`fix-deploy\` を \`deploy\` ブランチに反映するためのものです。
+    secrets:
+      app_id: ${{ secrets.TANUKI_2_APP_ID }}
+      app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+
+  merge-pr:
+    needs: create-pull-request
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Create GitHub App Token
-        id: create-token
+      - id: app-token
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.TANUKI_2_APP_ID }}
           private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
 
-      - name: Create Pull Request from fix-deploy to deploy
+      - name: Merge Pull Request
         run: |
-          gh pr create \
-            --base deploy \
-            --head fix-deploy \
-            --title "fix-deploy -> deploy" \
-            --body "自動作成されたPRです。fix-deployブランチの変更をdeployブランチに反映します。"
+          gh pr merge ${{ needs.create-pull-request.outputs.number }} --merge
         env:
-          GITHUB_TOKEN: ${{ steps.create-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
