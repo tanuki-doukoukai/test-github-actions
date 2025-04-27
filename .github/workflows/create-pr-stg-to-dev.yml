@@ -112,7 +112,7 @@ jobs:
         env:
           PR_NUMBER: ${{ needs.create-pull-request.outputs.number }}
           IGNORED_WORKFLOW: ${{ env.IGNORE_CHECK_CI_STATUS_WORKFLOW }}
-          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           bash .github/scripts/check-all-ci-success.sh
 
