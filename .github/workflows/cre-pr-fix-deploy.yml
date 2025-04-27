@@ -1,0 +1,30 @@
+name: Create PR fix-deploy to deploy
+
+on:
+  push:
+    branches:
+      - fix-deploy
+
+jobs:
+  create-fix-deploy-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create GitHub App Token
+        id: create-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.TANUKI_2_APP_ID }}
+          private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+
+      - name: Create Pull Request from fix-deploy to deploy
+        run: |
+          gh pr create \
+            --base deploy \
+            --head fix-deploy \
+            --title "fix-deploy -> deploy" \
+            --body "自動作成されたPRです。fix-deployブランチの変更をdeployブランチに反映します。"
+        env:
+          GITHUB_TOKEN: ${{ steps.create-token.outputs.token }}
