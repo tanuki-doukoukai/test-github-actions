@@ -14,6 +14,7 @@ jobs:
       pr_title: "fix-deploy -> deploy"
       pr_body: |
         このPRは、\`fix-deploy\` を \`deploy\` ブランチに反映するためのものです。
+      checkout_shadow_head_branch: false
     secrets:
       app_id: ${{ secrets.TANUKI_2_APP_ID }}
       app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
