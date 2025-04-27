@@ -54,6 +54,8 @@ jobs:
   create-app-token:
     needs: with-args
     runs-on: ubuntu-latest
+    outputs:
+      token: ${{ steps.app-token.outputs.token }}
     steps:
       - id: app-token
         uses: actions/create-github-app-token@v1
