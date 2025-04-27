@@ -22,7 +22,7 @@ for (( i=1; i<=MAX_ATTEMPTS; i++ )); do
   echo "⏳ Polling attempt $i/$MAX_ATTEMPTS..."
 
   # PR 情報取得
-  if ! PR_DATA=$(gh api -H "/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}"); then
+  if ! PR_DATA=$(gh api "/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}"); then
     echo "❌ Failed to fetch PR data" >&2
     echo "ci_passed=false" >> "$GITHUB_OUTPUT"
     exit 1
@@ -31,7 +31,7 @@ for (( i=1; i<=MAX_ATTEMPTS; i++ )); do
   HEAD_SHA=$(echo "$PR_DATA" | jq -r .head.sha)
 
   # ワークフロー実行取得（最新50件）
-  if ! RUNS_DATA=$(gh api -H "/repos/${GITHUB_REPOSITORY}/actions/runs?per_page=50"); then
+  if ! RUNS_DATA=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs?per_page=50"); then
     echo "❌ Failed to fetch workflow runs" >&2
     echo "ci_passed=false" >> "$GITHUB_OUTPUT"
     exit 1
