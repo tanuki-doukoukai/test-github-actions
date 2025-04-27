@@ -41,9 +41,9 @@ jobs:
         id: set-output
         run: |
           LOGIN="${{ github.event.pull_request.user.login }}"
-          if echo "$LOGIN" | grep -q '\[bot\]$'; then
-            ORIGINAL_PR_NUMBER=$(echo "${{ github.event.pull_request.body }}" | grep -oE 'original pr: #[0-9]+' | awk '{print $3}' | tr -d '#')
-            ORIGINAL_AUTHOR=$(echo "${{ github.event.pull_request.body }}" | grep -oE 'original author: [a-zA-Z0-9_-]+' | awk '{print $3}')
+          if echo "$LOGIN" | grep -q '\[bot\]$'; then  
+            ORIGINAL_PR_NUMBER=$(echo "${{ github.event.pull_request.body }}" | grep -oE 'original pr: #[0-9]+' | sed -E 's/[^0-9]//g')
+            ORIGINAL_AUTHOR=$(echo "${{ github.event.pull_request.body }}" | grep -oP 'original author: \K.*')
           else
             ORIGINAL_PR_NUMBER="${{ github.event.pull_request.number }}"
             ORIGINAL_AUTHOR="${{ github.event.pull_request.user.login }}"
