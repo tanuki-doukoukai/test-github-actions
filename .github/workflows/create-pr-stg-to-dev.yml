@@ -70,7 +70,9 @@ jobs:
       app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
 
   merge-pr-or-review:
-    needs: with-args
+    needs: 
+      - with-args
+      - create-pull-request
     runs-on: ubuntu-latest
     outputs:
       required_action_type: ${{ steps.merge_check.outputs.required_action_type }}
