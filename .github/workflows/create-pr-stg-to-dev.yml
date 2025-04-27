@@ -87,7 +87,10 @@ jobs:
           fi
 
   create-pull-request:
-    needs: [extract-pr-info, check-mergeable]
+    needs:
+      - with-args
+      - extract-pr-info
+      - check-mergeable
     uses: ./.github/workflows/create-pull-request.yml
     with:
       head_branch: ${{ needs.with-args.outputs.head_branch }}
@@ -126,9 +129,14 @@ jobs:
           bash .github/scripts/check-all-ci-success.sh
 
   merge-pull-request:
-    needs: [create-pull-request, check-ci-status]
-    if: needs.check-mergeable.outputs.mergeable == 'true' && 
-        needs.check-ci-status.outputs.ci_passed == 'true'
+    needs:
+      - create-app-token
+      - create-pull-request
+      - check-mergeable
+      - check-ci-status
+    if: >
+      needs.check-mergeable.outputs.mergeable == 'true' && 
+      needs.check-ci-status.outputs.ci_passed == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Merge Pull Request
@@ -138,30 +146,36 @@ jobs:
           GITHUB_TOKEN: ${{ needs.create-app-token.outputs.token }}
 
   request-review:
-    needs: [create-pull-request, check-ci-status]
-    if: needs.check-mergeable.outputs.mergeable == 'false' || 
-        needs.check-ci-status.outputs.ci_passed == 'false'
+    needs:
+      - extract-pr-info
+      - create-app-token
+      - create-pull-request
+      - check-mergeable
+      - check-ci-status
+    if: >
+      needs.check-mergeable.outputs.mergeable == 'false' || 
+      needs.check-ci-status.outputs.ci_passed == 'false'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/create-github-app-token@v1
-        id: app-token
-        with:
-          app-id: ${{ secrets.TANUKI_2_APP_ID }}
-          private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
-
       - name: Request Review
         run: |
-          REVIEWERS_JSON="{\"reviewers\":[\"${{ github.event.pull_request.user.login }}\"]}"
+          REVIEWERS_JSON="{\"reviewers\":[\"${{ needs.extract-pr-info.outputs.original_author }}\"]}"
           curl -s -X POST \
-            -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
+            -H "Authorization: token ${{ needs.create-app-token.outputs.token }}" \
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ github.repository_owner }}/pulls/${{ needs.create-pull-request.outputs.number }}/requested_reviewers \
             -d "$REVIEWERS_JSON"
 
   dispatch-notify:
-    needs: [create-pull-request, check-ci-status]
-    if: needs.check-mergeable.outputs.mergeable == 'false' || 
-        needs.check-ci-status.outputs.ci_passed == 'false'
+    needs:
+      - extract-pr-info
+      - create-app-token
+      - create-pull-request
+      - check-mergeable
+      - check-ci-status
+    if: >
+      needs.check-mergeable.outputs.mergeable == 'false' || 
+      needs.check-ci-status.outputs.ci_passed == 'false'
     runs-on: ubuntu-latest
     steps:
       - name: Determine Notify Type
