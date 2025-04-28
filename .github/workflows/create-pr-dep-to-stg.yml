@@ -14,7 +14,7 @@ env:
   REQUIRED_ACTION_TYPE_MERGE: auto-create-pr-merge
 
 jobs:
-  with-args:
+  prepare-params:
     if: >
       github.event.pull_request.merged == true &&
       github.event.pull_request.head.ref != 'staging'
@@ -29,14 +29,14 @@ jobs:
           echo "base_branch=$BASE_BRANCH" >> "$GITHUB_OUTPUT"
 
   create-pull-request:
-    needs: with-args
+    needs: prepare-params
     uses: ./.github/workflows/create-pull-request.yml
     with:
-      head_branch: ${{ needs.with-args.outputs.head_branch }}
-      base_branch: ${{ needs.with-args.outputs.base_branch }}
-      pr_title: "${{ needs.with-args.outputs.head_branch }} -> ${{ needs.with-args.outputs.base_branch }} (#${{ github.event.pull_request.number }})"
+      head_branch: ${{ needs.prepare-params.outputs.head_branch }}
+      base_branch: ${{ needs.prepare-params.outputs.base_branch }}
+      pr_title: "${{ needs.prepare-params.outputs.head_branch }} -> ${{ needs.prepare-params.outputs.base_branch }} (#${{ github.event.pull_request.number }})"
       pr_body: |
-        このPRは、以下のPRの変更内容を \`${{ needs.with-args.outputs.base_branch }}\` ブランチに反映するためのものです。
+        このPRは、以下のPRの変更内容を \`${{ needs.prepare-params.outputs.base_branch }}\` ブランチに反映するためのものです。
 
         - original pr: #${{ github.event.pull_request.number }}
         - original author: ${{ github.event.pull_request.user.login }}
@@ -54,13 +54,13 @@ jobs:
           app-id: ${{ secrets.TANUKI_2_APP_ID }}
           private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
 
-      - name: Request Review
+      - name: Request PR Review
         run: |
           REVIEWERS_JSON="{\"reviewers\":[\"${{ github.event.pull_request.user.login }}\"]}"
           curl -s -X POST \
             -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository_owner }}/pulls/${{ needs.create-pull-request.outputs.pr_number }}/requested_reviewers \
+            https://api.github.com/repos/${{ github.repository_owner }}/pulls/${{ needs.create-pull-request.outputs.number }}/requested_reviewers \
             -d "$REVIEWERS_JSON"
 
   dispatch-notify:
@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@v1
-        id: notify-token
+        id: dispatch-notify-token
         with:
           app-id: ${{ secrets.TANUKI_2_APP_ID }}
           private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
@@ -77,7 +77,7 @@ jobs:
       - name: Dispatch Notify Workflow
         run: |
           curl -s -X POST \
-            -H "Authorization: Bearer ${{ steps.notify-token.outputs.token }}" \
+            -H "Authorization: Bearer ${{ steps.dispatch-notify-token.outputs.token }}" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/${{ github.repository_owner }}/${{ env.DISPATCH_NOTIFY_REPOSITORIES }}/dispatches \
             -d '{
