@@ -117,7 +117,7 @@ jobs:
           IGNORED_WORKFLOW: ${{ env.IGNORE_CHECK_CI_STATUS_WORKFLOW }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          bash .github/scripts/check-all-ci-success.sh
+          bash .github/scripts/check-all-ci-passed.sh
 
       - name: Determine required action
         id: required-action
