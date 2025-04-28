@@ -86,6 +86,9 @@ jobs:
       - name: Check Mergeable
         id: check-mergeable
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
           if git merge --no-commit ${{ needs.prepare-params.outputs.head_branch }}; then
             echo "mergeable=true" >> "$GITHUB_OUTPUT"
           else
