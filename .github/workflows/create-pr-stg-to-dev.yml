@@ -154,19 +154,29 @@ jobs:
 
       - name: Dispatch Notify Workflow
         run: |
+          JSON_PAYLOAD=$(jq -n \
+            --arg event_type "${{ env.DISPATCH_NOTIFY_EVENT_TYPE }}" \
+            --arg required_action_type "${{ needs.merge-or-request-review.outputs.required_action_type }}" \
+            --arg author "${{ needs.prepare-params.outputs.original_author }}" \
+            --arg pr_number "${{ needs.create-pull-request.outputs.number }}" \
+            --arg pr_title "${{ needs.create-pull-request.outputs.title }}" \
+            --arg pr_html_url "${{ needs.create-pull-request.outputs.html_url }}" \
+            '{
+              event_type: $event_type,
+              client_payload: {
+                required_action_type: $required_action_type,
+                author: $author,
+                pull_request: {
+                  number: ($pr_number | tonumber),
+                  title: $pr_title,
+                  html_url: $pr_html_url
+                }
+              }
+            }'
+          )
+
           curl -s -X POST \
             -H "Authorization: Bearer ${{ steps.dispatch-notify-token.outputs.token }}" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/${{ github.repository_owner }}/${{ env.DISPATCH_NOTIFY_REPOSITORIES }}/dispatches \
-            -d '{
-              "event_type": "${{ env.DISPATCH_NOTIFY_EVENT_TYPE }}",
-              "client_payload": {
-                "required_action_type": "${{ needs.merge-or-request-review.outputs.required_action_type }}",
-                "author": "${{ needs.prepare-params.outputs.original_author }}",
-                "pull_request": {
-                  "number": ${{ needs.create-pull-request.outputs.number }},
-                  "title": "${{ needs.create-pull-request.outputs.title }}",
-                  "html_url": "${{ needs.create-pull-request.outputs.html_url }}"
-                }
-              }
-            }'
+            -d "$JSON_PAYLOAD"
