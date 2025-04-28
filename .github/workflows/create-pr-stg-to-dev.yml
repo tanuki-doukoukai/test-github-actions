@@ -9,36 +9,24 @@ on:
 env:
   HEAD_BRANCH: staging
   BASE_BRANCH: develop
-  IGNORE_CHECK_CI_STATUS_WORKFLOW: "Create PR staging to develop"
   DISPATCH_NOTIFY_REPOSITORIES: test-notify
   DISPATCH_NOTIFY_EVENT_TYPE: test-notify
   REQUIRED_ACTION_TYPE_CONFLICT: auto-create-pr-conflict
   REQUIRED_ACTION_TYPE_FAIL_CI: auto-create-pr-fail-ci
 
 jobs:
-  with-args:
+  prepare-params:
     if: >
       github.event.pull_request.merged == true &&
       github.event.pull_request.head.ref != 'develop'
     runs-on: ubuntu-latest
     outputs:
-      head_branch: ${{ steps.set.outputs.head_branch }}
-      base_branch: ${{ steps.set.outputs.base_branch }}
+      head_branch: ${{ steps.set-params.outputs.head_branch }}
+      base_branch: ${{ steps.set-params.outputs.base_branch }}
+      original_author: ${{ steps.set-params.outputs.original_author }}
+      original_pr_number: ${{ steps.set-params.outputs.original_pr_number }}
     steps:
-      - id: set
-        run: |
-          echo "head_branch=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
-          echo "base_branch=$BASE_BRANCH" >> "$GITHUB_OUTPUT"
-
-  extract-pr-info:
-    needs: with-args
-    runs-on: ubuntu-latest
-    outputs:
-      original_author: ${{ steps.set-output.outputs.original_author }}
-      original_pr_number: ${{ steps.set-output.outputs.original_pr_number }}
-    steps:
-      - name: Determine PR info
-        id: set-output
+      - id: set-params
         run: |
           LOGIN="${{ github.event.pull_request.user.login }}"
           if echo "$LOGIN" | grep -q '\[bot\]$'; then  
@@ -48,31 +36,32 @@ jobs:
             ORIGINAL_PR_NUMBER="${{ github.event.pull_request.number }}"
             ORIGINAL_AUTHOR="${{ github.event.pull_request.user.login }}"
           fi
+
+          echo "head_branch=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "base_branch=$BASE_BRANCH" >> "$GITHUB_OUTPUT"
           echo "original_pr_number=$ORIGINAL_PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "original_author=$ORIGINAL_AUTHOR" >> "$GITHUB_OUTPUT"
 
   create-pull-request:
     needs:
-      - with-args
-      - extract-pr-info
+      - prepare-params
     uses: ./.github/workflows/create-pull-request.yml
     with:
-      head_branch: ${{ needs.with-args.outputs.head_branch }}
-      base_branch: ${{ needs.with-args.outputs.base_branch }}
-      pr_title: "${{ needs.with-args.outputs.head_branch }} -> ${{ needs.with-args.outputs.base_branch }} (#${{ needs.extract-pr-info.outputs.original_pr_number }})"
+      head_branch: ${{ needs.prepare-params.outputs.head_branch }}
+      base_branch: ${{ needs.prepare-params.outputs.base_branch }}
+      pr_title: "${{ needs.prepare-params.outputs.head_branch }} -> ${{ needs.prepare-params.outputs.base_branch }} (#${{ needs.prepare-params.outputs.original_pr_number }})"
       pr_body: |
-        このPRは、以下のPRの変更内容を \`${{ needs.with-args.outputs.base_branch }}\` ブランチに反映するためのものです。
+        このPRは、以下のPRの変更内容を \`${{ needs.prepare-params.outputs.base_branch }}\` ブランチに反映するためのものです。
 
-        - original pr: #${{ needs.extract-pr-info.outputs.original_pr_number }}
-        - original author: ${{ needs.extract-pr-info.outputs.original_author }}
+        - original pr: #${{ needs.prepare-params.outputs.original_pr_number }}
+        - original author: ${{ needs.prepare-params.outputs.original_author }}
     secrets:
       app_id: ${{ secrets.TANUKI_2_APP_ID }}
       app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
 
-  merge-pr-or-review:
+  merge-or-request-review:
     needs: 
-      - with-args
-      - extract-pr-info
+      - prepare-params
       - create-pull-request
     runs-on: ubuntu-latest
     outputs:
@@ -87,34 +76,35 @@ jobs:
       - name: Checkout base branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.with-args.outputs.base_branch }}
+          ref: ${{ needs.prepare-params.outputs.base_branch }}
           fetch-depth: 0
 
       - name: Fetch head branch
         run: |
-          git fetch origin ${{ needs.with-args.outputs.head_branch }}:${{ needs.with-args.outputs.head_branch }}
+          git fetch origin ${{ needs.prepare-params.outputs.head_branch }}:${{ needs.prepare-params.outputs.head_branch }}
 
-      - name: Check Merge
-        id: check-merge
+      - name: Check Mergeable
+        id: check-mergeable
         run: |
-          if git merge --no-commit ${{ needs.with-args.outputs.head_branch }}; then
+          if git merge --no-commit ${{ needs.prepare-params.outputs.head_branch }}; then
             echo "mergeable=true" >> "$GITHUB_OUTPUT"
           else
             echo "mergeable=false" >> "$GITHUB_OUTPUT"
           fi
+
+          git reset --merge || true
 
       - name: Install jq and gh
         run: |
           sudo apt-get update
           sudo apt-get install -y jq gh
 
-      - name: Check CI
-        if: steps.check-merge.outputs.mergeable == 'true'
-        id: check-ci
+      - name: Check All CI Passed
+        if: steps.check-mergeable.outputs.mergeable == 'true'
+        id: check-ci-passed
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ needs.create-pull-request.outputs.number }}
-          IGNORED_WORKFLOW: ${{ env.IGNORE_CHECK_CI_STATUS_WORKFLOW }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           bash .github/scripts/check-all-ci-passed.sh
@@ -122,23 +112,25 @@ jobs:
       - name: Determine required action
         id: required-action
         run: |
-          if [ "${{ steps.check-merge.outputs.mergeable }}" = "false" ]; then
+          if [ "${{ steps.check-mergeable.outputs.mergeable }}" = "false" ]; then
             echo "required_action_type=${{ env.REQUIRED_ACTION_TYPE_CONFLICT }}" >> "$GITHUB_OUTPUT"
-          elif [ "${{ steps.check-ci.outputs.ci_passed }}" = "false" ]; then
+          elif [ "${{ steps.check-ci-passed.outputs.ci_passed }}" = "false" ]; then
             echo "required_action_type=${{ env.REQUIRED_ACTION_TYPE_FAIL_CI }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "required_action_type=none" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Merge Pull Request
-        if: steps.required-action.outputs.required_action_type == ''
+        if: steps.required-action.outputs.required_action_type == 'none'
         run: |
           gh pr merge ${{ needs.create-pull-request.outputs.number }} --merge --delete-branch
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
-      - name: Request Review
-        if: steps.required-action.outputs.required_action_type != ''
+      - name: Request Pull Request Review
+        if: steps.required-action.outputs.required_action_type != 'none'
         run: |
-          REVIEWERS_JSON="{\"reviewers\":[\"${{ needs.extract-pr-info.outputs.original_author }}\"]}"
+          REVIEWERS_JSON="{\"reviewers\":[\"${{ needs.prepare-params.outputs.original_author }}\"]}"
           curl -s -X POST \
             -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
             -H "Accept: application/vnd.github.v3+json" \
@@ -147,14 +139,14 @@ jobs:
 
   dispatch-notify:
     needs: 
-      - extract-pr-info
+      - prepare-params
       - create-pull-request
-      - merge-pr-or-review
-    if: needs.merge-pr-or-review.outputs.required_action_type != ''
+      - merge-or-request-review
+    if: needs.merge-or-request-review.outputs.required_action_type != 'none'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@v1
-        id: dispatch-notify-app-token
+        id: dispatch-notify-token
         with:
           app-id: ${{ secrets.TANUKI_2_APP_ID }}
           private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
@@ -163,14 +155,14 @@ jobs:
       - name: Dispatch Notify Workflow
         run: |
           curl -s -X POST \
-            -H "Authorization: Bearer ${{ steps.dispatch-notify-app-token.outputs.token }}" \
+            -H "Authorization: Bearer ${{ steps.dispatch-notify-token.outputs.token }}" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/${{ github.repository_owner }}/${{ env.DISPATCH_NOTIFY_REPOSITORIES }}/dispatches \
             -d '{
               "event_type": "${{ env.DISPATCH_NOTIFY_EVENT_TYPE }}",
               "client_payload": {
-                "required_action_type": "${{ needs.merge-pr-or-review.outputs.required_action_type }}",
-                "author": "${{ needs.extract-pr-info.outputs.original_author }}",
+                "required_action_type": "${{ needs.merge-or-request-review.outputs.required_action_type }}",
+                "author": "${{ needs.prepare-params.outputs.original_author }}",
                 "pull_request": {
                   "number": ${{ needs.create-pull-request.outputs.number }},
                   "title": "${{ needs.create-pull-request.outputs.title }}",

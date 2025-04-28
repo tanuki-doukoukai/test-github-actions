@@ -20,10 +20,10 @@ jobs:
       github.event.pull_request.head.ref != 'staging'
     runs-on: ubuntu-latest
     outputs:
-      head_branch: ${{ steps.set.outputs.head_branch }}
-      base_branch: ${{ steps.set.outputs.base_branch }}
+      head_branch: ${{ steps.set-params.outputs.head_branch }}
+      base_branch: ${{ steps.set-params.outputs.base_branch }}
     steps:
-      - id: set
+      - id: set-params
         run: |
           echo "head_branch=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
           echo "base_branch=$BASE_BRANCH" >> "$GITHUB_OUTPUT"
@@ -54,7 +54,7 @@ jobs:
           app-id: ${{ secrets.TANUKI_2_APP_ID }}
           private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
 
-      - name: Request PR Review
+      - name: Request Pull Request Review
         run: |
           REVIEWERS_JSON="{\"reviewers\":[\"${{ github.event.pull_request.user.login }}\"]}"
           curl -s -X POST \
