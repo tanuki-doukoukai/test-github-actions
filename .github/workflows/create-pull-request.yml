@@ -1,34 +1,39 @@
-name: Create PR
+name: Create Pull Request
 
 on:
   workflow_call:
     inputs:
       head_branch:
+        description: "マージ元ブランチ"
         required: true
         type: string
       base_branch:
+        description: "マージ先ブランチ"
         required: true
         type: string
       pr_title:
+        description: "作成する PR のタイトル"
         required: true
         type: string
       pr_body:
+        description: "作成する PR の説明"
         required: false
         default: ""
         type: string
       checkout_shadow_head_branch:
+        description: "マージ元ブランチから別名のブランチを作成して PR を作成するフラグ (例: [true] head-branch → auto/head-branch-123456789)"
         required: false
         default: true
         type: boolean
     outputs:
       number:
-        description: "Pull request number"
+        description: "作成した PR の番号"
         value: ${{ jobs.create-pull-request.outputs.number }}
       title:
-        description: "Pull request title"
+        description: "作成した PR のタイトル"
         value: ${{ jobs.create-pull-request.outputs.title }}
       html_url:
-        description: "Pull request URL"
+        description: "作成した PR のURL"
         value: ${{ jobs.create-pull-request.outputs.html_url }}
     secrets:
       app_id:
@@ -40,9 +45,9 @@ jobs:
   create-pull-request:
     runs-on: ubuntu-latest
     outputs:
-      number: ${{ steps.create-pr.outputs.pr_number }}
-      title: ${{ steps.create-pr.outputs.pr_title }}
-      html_url: ${{ steps.create-pr.outputs.pr_html_url }}
+      number: ${{ steps.create-pull-request.outputs.number }}
+      title: ${{ steps.create-pull-request.outputs.title }}
+      html_url: ${{ steps.create-pull-request.outputs.html_url }}
     steps:
       - name: Validate branches
         run: |
@@ -57,18 +62,18 @@ jobs:
           app-id: ${{ secrets.app_id }}
           private-key: ${{ secrets.app_private_key }}
 
-      - name: Get GitHub App User ID
-        id: get-user-id
-        run: echo "user-id=$(gh api \"/users/${{ steps.app-token.outputs.app-slug }}[bot]\" --jq .id)" >> "$GITHUB_OUTPUT"
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-
       - name: Checkout base branch
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.base_branch }}
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
+
+      - name: Get GitHub App User ID
+        id: get-user-id
+        run: echo "user-id=$(gh api \"/users/${{ steps.app-token.outputs.app-slug }}[bot]\" --jq .id)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Set up Git config
         run: |
@@ -91,16 +96,16 @@ jobs:
           fi
           echo "head_branch=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
 
-      - name: Create PR
-        id: create-pr
+      - name: Create Pull Request
+        id: create-pull-request
         run: |
-          BODY=$(printf "%s\n" "${{ inputs.pr_body }}")
+          PR_BODY=$(printf "%s\n" "${{ inputs.pr_body }}")
 
           PR_JSON=$(jq -n \
             --arg title "${{ inputs.pr_title }}" \
             --arg head "${{ steps.determine-head.outputs.head_branch }}" \
             --arg base "${{ inputs.base_branch }}" \
-            --arg body "$BODY" \
+            --arg body "$PR_BODY" \
             '{title: $title, head: $head, base: $base, body: $body}')
 
           PR_DATA=$(curl -s -X POST \
@@ -118,7 +123,6 @@ jobs:
             exit 1
           fi
 
-          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-          echo "pr_title=$PR_TITLE" >> "$GITHUB_OUTPUT"
-          echo "pr_html_url=$PR_HTML_URL" >> "$GITHUB_OUTPUT"
-
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "title=$PR_TITLE" >> "$GITHUB_OUTPUT"
+          echo "html_url=$PR_HTML_URL" >> "$GITHUB_OUTPUT"
