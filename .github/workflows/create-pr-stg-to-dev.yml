@@ -12,7 +12,6 @@ env:
   DISPATCH_NOTIFY_REPOSITORIES: test-notify
   DISPATCH_NOTIFY_EVENT_TYPE: test-notify
   REQUIRED_ACTION_TYPE_CONFLICT: auto-create-pr-conflict
-  REQUIRED_ACTION_TYPE_FAIL_CI: auto-create-pr-fail-ci
 
 jobs:
   prepare-params:
@@ -59,13 +58,12 @@ jobs:
       app_id: ${{ secrets.TANUKI_2_APP_ID }}
       app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
 
-  merge-or-request-review:
+  check-conflict:
     needs: 
       - prepare-params
-      - create-pull-request
     runs-on: ubuntu-latest
     outputs:
-      required_action_type: ${{ steps.required-action.outputs.required_action_type }}
+      conflict: ${{ steps.check-conflict.outputs.conflict }}
     steps:
       - id: app-token
         uses: actions/create-github-app-token@v1
@@ -83,55 +81,34 @@ jobs:
         run: |
           git fetch origin ${{ needs.prepare-params.outputs.head_branch }}:${{ needs.prepare-params.outputs.head_branch }}
 
-      - name: Check Mergeable
-        id: check-mergeable
+      - name: Check Conflict
+        id: check-conflict
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
           if git merge --no-commit ${{ needs.prepare-params.outputs.head_branch }}; then
-            echo "mergeable=true" >> "$GITHUB_OUTPUT"
+            echo "conflict=false" >> "$GITHUB_OUTPUT"
           else
-            echo "mergeable=false" >> "$GITHUB_OUTPUT"
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
           fi
 
           git reset --merge || true
 
-      - name: Install jq and gh
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq gh
-
-      - name: Check All CI Passed
-        if: steps.check-mergeable.outputs.mergeable == 'true'
-        id: check-ci-passed
-        env:
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          PR_NUMBER: ${{ needs.create-pull-request.outputs.number }}
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          bash .github/scripts/check-all-ci-passed.sh
-
-      - name: Determine required action
-        id: required-action
-        run: |
-          if [ "${{ steps.check-mergeable.outputs.mergeable }}" = "false" ]; then
-            echo "required_action_type=${{ env.REQUIRED_ACTION_TYPE_CONFLICT }}" >> "$GITHUB_OUTPUT"
-          elif [ "${{ steps.check-ci-passed.outputs.ci_passed }}" = "false" ]; then
-            echo "required_action_type=${{ env.REQUIRED_ACTION_TYPE_FAIL_CI }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "required_action_type=none" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Merge Pull Request
-        if: steps.required-action.outputs.required_action_type == 'none'
-        run: |
-          gh pr merge ${{ needs.create-pull-request.outputs.number }} --merge --delete-branch
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+  request-review:
+    needs: 
+      - create-pull-request
+      - check-conflict
+    if: needs.check-conflict.outputs.conflict = 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.TANUKI_2_APP_ID }}
+          private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
 
       - name: Request Pull Request Review
-        if: steps.required-action.outputs.required_action_type != 'none'
         run: |
           REVIEWERS_JSON="{\"reviewers\":[\"${{ needs.prepare-params.outputs.original_author }}\"]}"
           curl -s -X POST \
@@ -142,10 +119,9 @@ jobs:
 
   dispatch-notify:
     needs: 
-      - prepare-params
       - create-pull-request
-      - merge-or-request-review
-    if: needs.merge-or-request-review.outputs.required_action_type != 'none'
+      - check-conflict
+    if: needs.check-conflict.outputs.conflict = 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@v1
@@ -159,7 +135,7 @@ jobs:
         run: |
           JSON_PAYLOAD=$(jq -n \
             --arg event_type "${{ env.DISPATCH_NOTIFY_EVENT_TYPE }}" \
-            --arg required_action_type "${{ needs.merge-or-request-review.outputs.required_action_type }}" \
+            --arg required_action_type "${{ env.REQUIRED_ACTION_TYPE_CONFLICT }}" \
             --arg author "${{ needs.prepare-params.outputs.original_author }}" \
             --arg pr_number "${{ needs.create-pull-request.outputs.number }}" \
             --arg pr_title "${{ needs.create-pull-request.outputs.title }}" \
