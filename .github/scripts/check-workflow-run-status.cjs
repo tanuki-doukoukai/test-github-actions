@@ -14,6 +14,7 @@ module.exports = async ({ github, context }) => {
         const res = await github.rest.actions.listWorkflowRunsForRepo({
             owner,
             repo,
+            head_sha: headSha,
             per_page: perPage,
             page,
         });
@@ -21,7 +22,7 @@ module.exports = async ({ github, context }) => {
         if (!res.data.workflow_runs || res.data.workflow_runs.length === 0) break;
 
         const matching = res.data.workflow_runs.filter(
-            (run) => run.head_sha === headSha && run.id !== selfRunId
+            (run) => run.id !== selfRunId
         );
 
         allRuns.push(...matching);
