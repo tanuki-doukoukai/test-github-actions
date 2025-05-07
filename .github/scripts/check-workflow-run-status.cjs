@@ -68,12 +68,14 @@ module.exports = async ({ github, context }) => {
             aggregatedStatus = "UNKNOWN";
             break;
         }
+
+        console.log(`✅ ${name}: ${conclusion}`);
     }
 
     if (!aggregatedStatus) {
         aggregatedStatus = "SUCCESS_ALL";
     }
 
-    console.log("Aggregate Status:", aggregatedStatus);
+    console.log("Aggregated Status:", aggregatedStatus);
     return aggregatedStatus;
 };
