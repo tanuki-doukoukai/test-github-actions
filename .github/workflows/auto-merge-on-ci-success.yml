@@ -6,11 +6,10 @@ on:
       - "*"
     types:
       - completed
-    branches:
-      - staging
 
 jobs:
   check_if_all_job_finished:
+    if: startsWith(github.event.workflow_run.head_branch, 'auto/staging')
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
