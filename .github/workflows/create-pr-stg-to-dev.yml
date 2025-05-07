@@ -99,7 +99,7 @@ jobs:
     needs: 
       - create-pull-request
       - check-conflict
-    if: needs.check-conflict.outputs.conflict = 'true'
+    if: needs.check-conflict.outputs.conflict == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@v1
@@ -121,7 +121,7 @@ jobs:
     needs: 
       - create-pull-request
       - check-conflict
-    if: needs.check-conflict.outputs.conflict = 'true'
+    if: needs.check-conflict.outputs.conflict == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@v1
