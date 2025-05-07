@@ -21,7 +21,7 @@ module.exports = async ({ github, context }) => {
 
         if (!res.data.workflow_runs || res.data.workflow_runs.length === 0) break;
 
-        allRuns.push(...matching);
+        allRuns.push(...res.data.workflow_runs);
 
         if (res.data.workflow_runs.length < perPage) break;
     }
