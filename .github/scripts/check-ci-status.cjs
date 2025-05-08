@@ -1,5 +1,8 @@
 /** @typedef {'SUCCESS_ALL' | 'IN_PROGRESS' | 'FAILED_OR_UNKNOWN' | 'UNKNOWN'} CheckStatus */
 
+const isSuccessConclusion = (conclusion) =>
+    ["success", "skipped", "action_required"].includes(conclusion);
+
 module.exports = async ({ github, context }) => {
     const { owner, repo } = context.repo;
     const headSha = context.payload.workflow_run.head_sha;
@@ -19,36 +22,36 @@ module.exports = async ({ github, context }) => {
         });
 
         const runs = res.data.workflow_runs ?? [];
-        if (runs.length === 0) {
-            break;
-        }
+        if (runs.length === 0) break;
 
         allRuns.push(...runs);
+        if (runs.length < perPage) break;
+    }
 
-        if (runs.length < perPage) {
-            break;
+    if (allRuns.length === 0) {
+        console.log(`📭 No workflow_runs found for head_sha: ${headSha}`);
+        return "UNKNOWN";
+    }
+
+    let isAllSuccess = true;
+
+    for (const { name, status, conclusion } of allRuns) {
+        if (status !== "completed") {
+            console.log(`⏳ ${name}: status=${status}`);
+            return "IN_PROGRESS";
         }
 
-        if (allRuns.length === 0) {
-            console.log(`No workflow_runs found for head_sha: ${headSha}`);
-            return "UNKNOWN";
+        if (isSuccessConclusion(conclusion)) {
+            console.log(`✅ ${name}: conclusion=${conclusion}`);
+            continue;
         }
 
-        for (const { name, status, conclusion } of allRuns) {
-            if (status !== "completed") {
-                console.log(`${name}: status=${status}`);
-                return "IN_PROGRESS";
-            }
+        console.log(`❌ ${name}: conclusion=${conclusion}`);
+        isAllSuccess = false;
+    }
 
-            console.log(`${name}: conclusion=${conclusion}`);
+    const aggregatedStatus = isAllSuccess ? "SUCCESS_ALL" : "FAILED_OR_UNKNOWN";
+    console.log(`🧾 Aggregated status: ${aggregatedStatus}`);
 
-            if (["success", "skipped", "action_required"].includes(conclusion)) {
-                continue;
-            }
-
-            return "FAILED_OR_UNKNOWN";
-        }
-
-        console.log("All workflows succeeded");
-        return "SUCCESS_ALL";
-    };
+    return aggregatedStatus;
+};
