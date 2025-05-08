@@ -62,7 +62,8 @@ jobs:
 
             const pr = res.data.find(pr =>
               pr.state === 'open' &&
-              pr.head.ref === headBranch
+              pr.head.ref === headBranch &&
+              pr.base.ref === process.env.BASE_BRANCH
             );
 
             core.setOutput('number', pr?.number ?? '');
@@ -90,7 +91,7 @@ jobs:
             -d "$REVIEWERS_JSON"
 
   is-ci-fail-dispatch-notify:
-    needs: auto-merge-on-ci-success:
+    needs: auto-merge-on-ci-success
     if: > 
       needs.auto-merge-on-ci-success:.outputs.ci_status != 'IN_PROGRESS' && 
       needs.auto-merge-on-ci-success:.outputs.ci_status != 'SUCCESS_ALL' &&
