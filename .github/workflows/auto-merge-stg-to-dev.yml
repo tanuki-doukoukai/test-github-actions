@@ -93,9 +93,9 @@ jobs:
   is-ci-fail-dispatch-notify:
     needs: auto-merge-on-ci-success
     if: > 
-      needs.auto-merge-on-ci-success:.outputs.ci_status != 'IN_PROGRESS' && 
-      needs.auto-merge-on-ci-success:.outputs.ci_status != 'SUCCESS_ALL' &&
-      needs.auto-merge-on-ci-success:.outputs.pr_number != ''
+      needs.auto-merge-on-ci-success.outputs.ci_status != 'IN_PROGRESS' && 
+      needs.auto-merge-on-ci-success.outputs.ci_status != 'SUCCESS_ALL' &&
+      needs.auto-merge-on-ci-success.outputs.pr_number != ''
     runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@v1
@@ -110,10 +110,10 @@ jobs:
           JSON_PAYLOAD=$(jq -n \
             --arg event_type "${{ env.DISPATCH_NOTIFY_EVENT_TYPE }}" \
             --arg required_action_type "${{ env.REQUIRED_ACTION_TYPE_CONFLICT }}" \
-            --arg author "${{ needs.auto-merge-on-ci-success:.outputs.pr_original_author }}" \
-            --arg pr_number "${{ needs.auto-merge-on-ci-success:.outputs.pr_number }}" \
-            --arg pr_title "${{ needs.auto-merge-on-ci-success:.outputs.pr_title }}" \
-            --arg pr_html_url "${{ needs.auto-merge-on-ci-success:.outputs.pr_html_url }}" \
+            --arg author "${{ needs.auto-merge-on-ci-success.outputs.pr_original_author }}" \
+            --arg pr_number "${{ needs.auto-merge-on-ci-success.outputs.pr_number }}" \
+            --arg pr_title "${{ needs.auto-merge-on-ci-success.outputs.pr_title }}" \
+            --arg pr_html_url "${{ needs.auto-merge-on-ci-success.outputs.pr_html_url }}" \
             '{
               event_type: $event_type,
               client_payload: {
