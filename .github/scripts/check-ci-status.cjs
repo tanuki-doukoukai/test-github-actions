@@ -1,4 +1,4 @@
-/** @typedef {'SUCCESS_ALL' | 'IN_PROGRESS' | 'FAILED_AND_COMPLETED' | 'CANCELED' | 'UNKNOWN'} CheckStatus */
+/** @typedef {'SUCCESS_ALL' | 'IN_PROGRESS' | 'FAILED_OR_UNKNOWN' | 'UNKNOWN'} CheckStatus */
 
 module.exports = async ({ github, context }) => {
     const { owner, repo } = context.repo;
@@ -30,10 +30,9 @@ module.exports = async ({ github, context }) => {
         return "UNKNOWN";
     }
 
-    /** @type {CheckStatus | null} */
     let aggregatedStatus = null;
+    let allSuccess = true;
 
-    // 各workflow_runのstatusとconclusionを確認して、最初に見つかったものを返す
     for (const run of allRuns) {
         const { name, status, conclusion } = run;
 
@@ -43,33 +42,24 @@ module.exports = async ({ github, context }) => {
             break;
         }
 
+        if (conclusion === "success" || conclusion === "skipped" || conclusion === "action_required") {
+            console.log(`✅ ${name}: ${conclusion}`);
+            continue;
+        }
+
         if (conclusion === "failure" || conclusion === "timed_out") {
             console.log(`❌ ${name}: failed`);
-            aggregatedStatus = "FAILED_AND_COMPLETED";
-            break;
-        }
-
-        if (conclusion === "cancelled") {
+        } else if (conclusion === "cancelled") {
             console.log(`🚫 ${name}: cancelled`);
-            aggregatedStatus = "CANCELED";
-            break;
-        }
-
-        if (
-            conclusion !== "success" &&
-            conclusion !== "skipped" &&
-            conclusion !== "action_required"
-        ) {
+        } else {
             console.log(`❓ ${name}: unknown conclusion "${conclusion}"`);
-            aggregatedStatus = "UNKNOWN";
-            break;
         }
 
-        console.log(`✅ ${name}: ${conclusion}`);
+        allSuccess = false;
     }
 
     if (!aggregatedStatus) {
-        aggregatedStatus = "SUCCESS_ALL";
+        aggregatedStatus = allSuccess ? "SUCCESS_ALL" : "FAILED_OR_UNKNOWN";
     }
 
     console.log("Aggregated Status:", aggregatedStatus);
