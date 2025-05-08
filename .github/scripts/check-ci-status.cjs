@@ -28,28 +28,28 @@ module.exports = async ({ github, context }) => {
         if (runs.length < perPage) {
             break;
         }
-
-        if (allRuns.length === 0) {
-            console.log(`No workflow_runs found for head_sha: ${headSha}`);
-            return "UNKNOWN";
-        }
-
-        for (const { name, status, conclusion } of allRuns) {
-            if (status !== "completed") {
-                console.log(`${name}: status=${status}`);
-                return "IN_PROGRESS";
-            }
-
-            console.log(`${name}: conclusion=${conclusion}`);
-
-            if (["success", "skipped", "action_required"].includes(conclusion)) {
-                continue;
-            }
-
-            return "FAILED_OR_UNKNOWN";
-        }
-
-        console.log("All workflows succeeded");
-        return "SUCCESS_ALL";
     }
+
+    if (allRuns.length === 0) {
+        console.log(`No workflow_runs found for head_sha: ${headSha}`);
+        return "UNKNOWN";
+    }
+
+    for (const { name, status, conclusion } of allRuns) {
+        if (status !== "completed") {
+            console.log(`${name}: status=${status}`);
+            return "IN_PROGRESS";
+        }
+
+        console.log(`${name}: conclusion=${conclusion}`);
+
+        if (["success", "skipped", "action_required"].includes(conclusion)) {
+            continue;
+        }
+
+        return "FAILED_OR_UNKNOWN";
+    }
+
+    console.log("All workflows succeeded");
+    return "SUCCESS_ALL";
 }
