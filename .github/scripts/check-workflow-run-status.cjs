@@ -3,7 +3,6 @@
 module.exports = async ({ github, context }) => {
     const { owner, repo } = context.repo;
     const headSha = context.payload.workflow_run.head_sha;
-    const selfRunId = context.payload.workflow_run.id;
 
     const perPage = 100;
     const maxPages = 5;
