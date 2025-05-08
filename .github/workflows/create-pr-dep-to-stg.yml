@@ -9,7 +9,6 @@ on:
 env:
   HEAD_BRANCH: deploy
   BASE_BRANCH: staging
-  REQUIRED_ACTION_TYPE_MERGE: auto-create-pr-merge
 
 jobs:
   prepare-params:
@@ -66,7 +65,7 @@ jobs:
       - create-pull-request
     uses: ./.github/workflows/pr-required-action-notify.yml
     with:
-      required_action_type: ${{ env.REQUIRED_ACTION_TYPE_MERGE }}
+      required_action_type: auto-create-pr-merge
       author: ${{ github.event.pull_request.user.login }}
       pr_number: ${{ needs.create-pull-request.outputs.number }}
       pr_title: ${{ needs.create-pull-request.outputs.title }}
