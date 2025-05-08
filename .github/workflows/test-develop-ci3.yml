@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Sleep a bit...
-        run: sleep 25
+        run: sleep 120
 
       - name: Fail intentionally
         run: exit 1
