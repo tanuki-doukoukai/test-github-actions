@@ -9,15 +9,16 @@ on:
     branches:
       - 'auto/staging-*'
 env:
+  BASE_BRANCH: develop
   DISPATCH_NOTIFY_REPOSITORIES: test-notify
   DISPATCH_NOTIFY_EVENT_TYPE: test-notify
   REQUIRED_ACTION_TYPE_FAIL_CI: auto-create-pr-fail-ci
 
 jobs:
-  check-ci-status-to-merge-pr:
+  auto-merge-on-ci-success:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    ouputs:
+    outputs:
       ci_status: ${{ steps.check-ci-status.outputs.result }}
       pr_number: ${{ steps.find-pull-request.outputs.number }}
       pr_title: ${{ steps.find-pull-request.outputs.title }}
@@ -77,6 +78,9 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Request Pull Request Review
+        if: >
+          steps.check-ci-status.outputs.result != 'IN_PROGRESS' &&
+          steps.check-ci-status.outputs.result != 'SUCCESS_ALL'
         run: |
           REVIEWERS_JSON="{\"reviewers\":[\"${{ steps.find-pull-request.outputs.original_author }}\"]}"
           curl -s -X POST \
@@ -86,10 +90,11 @@ jobs:
             -d "$REVIEWERS_JSON"
 
   is-ci-fail-dispatch-notify:
-    needs: check-ci-status-to-merge-pr
+    needs: auto-merge-on-ci-success:
     if: > 
-      needs.check-ci-status-to-merge-pr.outputs.ci_status == 'FAILED_AND_COMPLETED' && 
-      needs.check-ci-status-to-merge-pr.outputs.pr_number != ''
+      needs.auto-merge-on-ci-success:.outputs.ci_status != 'IN_PROGRESS' && 
+      needs.auto-merge-on-ci-success:.outputs.ci_status != 'SUCCESS_ALL' &&
+      needs.auto-merge-on-ci-success:.outputs.pr_number != ''
     runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@v1
@@ -104,10 +109,10 @@ jobs:
           JSON_PAYLOAD=$(jq -n \
             --arg event_type "${{ env.DISPATCH_NOTIFY_EVENT_TYPE }}" \
             --arg required_action_type "${{ env.REQUIRED_ACTION_TYPE_CONFLICT }}" \
-            --arg author "${{ needs.check-ci-status-to-merge-pr.outputs.pr_original_author }}" \
-            --arg pr_number "${{ needs.check-ci-status-to-merge-pr.outputs.pr_number }}" \
-            --arg pr_title "${{ needs.check-ci-status-to-merge-pr.outputs.pr_title }}" \
-            --arg pr_html_url "${{ needs.check-ci-status-to-merge-pr.outputs.pr_html_url }}" \
+            --arg author "${{ needs.auto-merge-on-ci-success:.outputs.pr_original_author }}" \
+            --arg pr_number "${{ needs.auto-merge-on-ci-success:.outputs.pr_number }}" \
+            --arg pr_title "${{ needs.auto-merge-on-ci-success:.outputs.pr_title }}" \
+            --arg pr_html_url "${{ needs.auto-merge-on-ci-success:.outputs.pr_html_url }}" \
             '{
               event_type: $event_type,
               client_payload: {
