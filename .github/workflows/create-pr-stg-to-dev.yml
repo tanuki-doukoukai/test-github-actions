@@ -9,7 +9,6 @@ on:
 env:
   HEAD_BRANCH: staging
   BASE_BRANCH: develop
-  REQUIRED_ACTION_TYPE_CONFLICT: auto-create-pr-conflict
 
 jobs:
   prepare-params:
@@ -117,7 +116,7 @@ jobs:
     if: needs.check-conflict.outputs.conflict == 'true'
     uses: ./.github/workflows/pr-required-action-notify.yml
     with:
-      required_action_type: ${{ env.REQUIRED_ACTION_TYPE_CONFLICT }}
+      required_action_type: auto-create-pr-conflict
       author: ${{ needs.prepare-params.outputs.original_author }}
       pr_number: ${{ needs.create-pull-request.outputs.number }}
       pr_title: ${{ needs.create-pull-request.outputs.title }}
