@@ -9,8 +9,6 @@ on:
 env:
   HEAD_BRANCH: deploy
   BASE_BRANCH: staging
-  DISPATCH_NOTIFY_REPOSITORIES: test-notify
-  DISPATCH_NOTIFY_EVENT_TYPE: test-notify
   REQUIRED_ACTION_TYPE_MERGE: auto-create-pr-merge
 
 jobs:
@@ -64,41 +62,15 @@ jobs:
             -d "$REVIEWERS_JSON"
 
   dispatch-notify:
-    needs: create-pull-request
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/create-github-app-token@v1
-        id: dispatch-notify-token
-        with:
-          app-id: ${{ secrets.TANUKI_2_APP_ID }}
-          private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
-          repositories: ${{ env.DISPATCH_NOTIFY_REPOSITORIES }}
-
-      - name: Dispatch Notify Workflow
-        run: |
-          JSON_PAYLOAD=$(jq -n \
-            --arg event_type "${{ env.DISPATCH_NOTIFY_EVENT_TYPE }}" \
-            --arg required_action_type "${{ env.REQUIRED_ACTION_TYPE_MERGE }}" \
-            --arg author "${{ github.event.pull_request.user.login }}" \
-            --arg pr_number "${{ needs.create-pull-request.outputs.number }}" \
-            --arg pr_title "${{ needs.create-pull-request.outputs.title }}" \
-            --arg pr_html_url "${{ needs.create-pull-request.outputs.html_url }}" \
-            '{
-              event_type: $event_type,
-              client_payload: {
-                required_action_type: $required_action_type,
-                author: $author,
-                pull_request: {
-                  number: ($pr_number | tonumber),
-                  title: $pr_title,
-                  html_url: $pr_html_url
-                }
-              }
-            }'
-          )
-
-          curl -s -X POST \
-            -H "Authorization: Bearer ${{ steps.dispatch-notify-token.outputs.token }}" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${{ github.repository_owner }}/${{ env.DISPATCH_NOTIFY_REPOSITORIES }}/dispatches \
-            -d "$JSON_PAYLOAD"
+    needs: 
+      - create-pull-request
+    uses: ./.github/workflows/pr-required-action-notify.yml
+    with:
+      required_action_type: ${{ env.REQUIRED_ACTION_TYPE_MERGE }}
+      author: ${{ github.event.pull_request.user.login }}
+      pr_number: ${{ needs.create-pull-request.outputs.number }}
+      pr_title: ${{ needs.create-pull-request.outputs.title }}
+      pr_html_url: ${{ needs.create-pull-request.outputs.html_url }}
+    secrets:
+      app_id: ${{ secrets.TANUKI_2_APP_ID }}
+      app_private_key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}

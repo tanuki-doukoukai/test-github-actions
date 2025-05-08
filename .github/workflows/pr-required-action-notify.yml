@@ -1,0 +1,73 @@
+name: Dispatch Notify
+
+on:
+  workflow_call:
+    inputs:
+      required_action_type:
+        description: "必須アクションの種類"
+        required: true
+        type: string
+      author:
+        description: "PR の作成者"
+        required: true
+        type: string
+      pr_number:
+        description: "PR 番号"
+        required: true
+        type: string
+      pr_title:
+        description: "PR タイトル"
+        required: true
+        type: string
+      pr_html_url:
+        description: "PR の URL"
+        required: true
+        type: string
+    secrets:
+      app_id:
+        required: true
+      app_private_key:
+        required: true
+env:
+  DISPATCH_NOTIFY_REPOSITORIES: test-notify
+  DISPATCH_NOTIFY_EVENT_TYPE: test-notify
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v1
+        id: dispatch-notify-token
+        with:
+          app-id: ${{ secrets.app_id }}
+          private-key: ${{ secrets.app_private_key }}
+          repositories: ${{ env.DISPATCH_NOTIFY_REPOSITORIES }}
+
+      - name: Dispatch Notify Workflow
+        run: |
+          JSON_PAYLOAD=$(jq -n \
+            --arg event_type "${{ env.DISPATCH_NOTIFY_EVENT_TYPE }}" \
+            --arg required_action_type "${{ inputs.required_action_type }}" \
+            --arg author "${{ inputs.author }}" \
+            --arg pr_number "${{ inputs.pr_number }}" \
+            --arg pr_title "${{ inputs.pr_title }}" \
+            --arg pr_html_url "${{ inputs.pr_html_url }}" \
+            '{
+              event_type: $event_type,
+              client_payload: {
+                required_action_type: $required_action_type,
+                author: $author,
+                pull_request: {
+                  number: ($pr_number | tonumber),
+                  title: $pr_title,
+                  html_url: $pr_html_url
+                }
+              }
+            }'
+          )
+
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ steps.dispatch-notify-token.outputs.token }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository_owner }}/${{ env.DISPATCH_NOTIFY_REPOSITORIES }}/dispatches \
+            -d "$JSON_PAYLOAD"
