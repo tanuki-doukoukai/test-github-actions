@@ -15,7 +15,6 @@ concurrency:
 
 env:
   BASE_BRANCH: develop
-  REQUIRED_ACTION_TYPE_FAIL_CI: auto-create-pr-fail-ci
 
 jobs:
   auto-merge-on-ci-success:
@@ -101,7 +100,7 @@ jobs:
       needs.auto-merge-on-ci-success.outputs.pr_number != ''
     uses: ./.github/workflows/pr-required-action-notify.yml
     with:
-      required_action_type: ${{ env.REQUIRED_ACTION_TYPE_FAIL_CI }}
+      required_action_type: auto-create-pr-fail-ci
       author: ${{ needs.auto-merge-on-ci-success.outputs.pr_original_author }}
       pr_number: ${{ needs.auto-merge-on-ci-success.outputs.pr_number }}
       pr_title: ${{ needs.auto-merge-on-ci-success.outputs.pr_title }}
