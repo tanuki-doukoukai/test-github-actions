@@ -8,6 +8,11 @@ on:
       - completed
     branches:
       - 'auto/staging-*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
 env:
   BASE_BRANCH: develop
   DISPATCH_NOTIFY_REPOSITORIES: test-notify
