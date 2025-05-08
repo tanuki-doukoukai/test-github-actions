@@ -51,4 +51,5 @@ module.exports = async ({ github, context }) => {
 
         console.log("All workflows succeeded");
         return "SUCCESS_ALL";
-    };
+    }
+}
