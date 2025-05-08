@@ -3,7 +3,6 @@
 module.exports = async ({ github, context }) => {
     const { owner, repo } = context.repo;
     const headSha = context.payload.workflow_run.head_sha;
-    const selfRunId = context.payload.workflow_run.id;
 
     const perPage = 100;
     const maxPages = 5;
@@ -14,17 +13,14 @@ module.exports = async ({ github, context }) => {
         const res = await github.rest.actions.listWorkflowRunsForRepo({
             owner,
             repo,
+            head_sha: headSha,
             per_page: perPage,
             page,
         });
 
         if (!res.data.workflow_runs || res.data.workflow_runs.length === 0) break;
 
-        const matching = res.data.workflow_runs.filter(
-            (run) => run.head_sha === headSha && run.id !== selfRunId
-        );
-
-        allRuns.push(...matching);
+        allRuns.push(...res.data.workflow_runs);
 
         if (res.data.workflow_runs.length < perPage) break;
     }
@@ -68,12 +64,14 @@ module.exports = async ({ github, context }) => {
             aggregatedStatus = "UNKNOWN";
             break;
         }
+
+        console.log(`✅ ${name}: ${conclusion}`);
     }
 
     if (!aggregatedStatus) {
         aggregatedStatus = "SUCCESS_ALL";
     }
 
-    console.log("Aggregate Status:", aggregatedStatus);
+    console.log("Aggregated Status:", aggregatedStatus);
     return aggregatedStatus;
 };
