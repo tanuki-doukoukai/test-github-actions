@@ -1,0 +1,55 @@
+name: Create or Update auto branch on PR close
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  create-auto-branch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.TANUKI_2_APP_ID }}
+          private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+  
+      - name: Normalize head branch and generate auto branch
+        id: branch
+        run: |
+          RAW_NAME="${{ github.event.pull_request.head.ref }}"
+          echo "RAW_NAME=${RAW_NAME}"
+
+          # 正規表現: auto/{name}-{timestamp}
+          if echo "${RAW_NAME}" | grep -qE '^auto/[a-zA-Z0-9._/-]+-[0-9]{10}$'; then
+            BASE_NAME=$(echo "${RAW_NAME}" | awk -F'-[0-9]{10}$' '{print $1}')
+            echo "Matched existing auto branch format: ${BASE_NAME}"
+          else
+            SANITIZED_NAME=$(echo "${RAW_NAME}" | tr '/' '-')
+            BASE_NAME="auto/${SANITIZED_NAME}"
+            echo "Sanitized base name: ${BASE_NAME}"
+          fi
+
+          TIMESTAMP=$(date +%s)
+          FINAL_BRANCH="${BASE_NAME}-${TIMESTAMP}"
+
+          echo "Final branch name: ${FINAL_BRANCH}"
+
+          echo "base_name=${BASE_NAME}" >> "${GITHUB_OUTPUT}"
+          echo "final_branch=${FINAL_BRANCH}" >> "${GITHUB_OUTPUT}"
+
+      - name: Checkout PR HEAD SHA
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Create and push branch
+        run: |
+          BRANCH_NAME="${{ steps.branch.outputs.final_branch }}"
+          git checkout -b "${BRANCH_NAME}"
+          git push origin "${BRANCH_NAME}"
