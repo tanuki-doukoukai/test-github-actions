@@ -1,0 +1,17 @@
+name: Log PR SHA on Close
+
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  log-sha:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log PR SHAs
+        run: |
+          echo "Base branch: ${{ github.event.pull_request.base.ref }}"
+          echo "Base SHA:    ${{ github.event.pull_request.base.sha }}"
+          echo "Head branch: ${{ github.event.pull_request.head.ref }}"
+          echo "Head SHA:    ${{ github.event.pull_request.head.sha }}"
