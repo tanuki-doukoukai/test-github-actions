@@ -2,7 +2,6 @@ name: A - Intentional CI Failure
 
 on:
   pull_request:
-    branches: [develop]
     types: [opened]
 
 jobs:
@@ -10,6 +9,8 @@ jobs:
     # if: startsWith(github.head_ref, 'auto/')
     runs-on: ubuntu-latest
     steps:
+      - name: Sleep a bit...
+        run: sleep 15
 
       # - name: Fail intentionally
       #   run: exit 1
