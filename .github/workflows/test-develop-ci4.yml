@@ -1,0 +1,20 @@
+name: A - Intentional CI Failure
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  fail:
+    # if: startsWith(github.head_ref, 'auto/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sleep a bit...
+        run: sleep 40
+
+      # - name: Fail intentionally
+      #   run: exit 1
+
+      # === 成功パターン（今は使わない）===
+      - name: Succeed intentionally
+        run: echo "CI passed successfully"
