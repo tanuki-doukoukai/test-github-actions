@@ -1,0 +1,87 @@
+name: Test PR Creation
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_title:
+        description: 'Pull Request title'
+        required: true
+        type: string
+        default: 'Test PR from dispatch workflow'
+      pr_body:
+        description: 'Pull Request body/description'
+        required: false
+        type: string
+        default: 'This is a test PR created via workflow dispatch'
+      head_branch:
+        description: 'Head branch for the PR'
+        required: true
+        type: string
+      base_branch:
+        description: 'Base branch for the PR'
+        required: false
+        type: string
+        default: 'main'
+      assignees:
+        description: 'Comma-separated list of assignees'
+        required: false
+        type: string
+
+jobs:
+  test-pr-creation:
+    runs-on: ubuntu-latest
+    outputs:
+      pr_number: ${{ steps.create-pull-request.outputs.number }}
+      pr_title: ${{ steps.create-pull-request.outputs.title }}
+      pr_url: ${{ steps.create-pull-request.outputs.html_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.TANUKI_2_APP_ID }}
+          private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+
+      - name: Create Pull Request
+        id: create-pull-request
+        run: |
+          PR_BODY=$(printf "%s\n" "${{ inputs.pr_body }}")
+
+          PR_DATA=$(gh pr create \
+            --title "${{ inputs.pr_title }}" \
+            --head "${{ inputs.head_branch }}" \
+            --base "${{ inputs.base_branch }}" \
+            --body "${PR_BODY}" \
+            --repo "${{ github.repository }}" \
+            --json number,title,url)
+
+          PR_NUMBER=$(echo "${PR_DATA}" | jq -r .number)
+          PR_TITLE=$(echo "${PR_DATA}" | jq -r .title)
+          PR_HTML_URL=$(echo "${PR_DATA}" | jq -r .url)
+
+          if [ -z "${PR_NUMBER}" ] || [ "${PR_NUMBER}" = "null" ]; then
+            echo "Failed to create PR or retrieve PR number." >&2
+            exit 1
+          fi
+
+          if [ "${{ inputs.assignees }}" != "" ]; then
+            IFS=',' read -r -a ASSIGNEE_ARRAY <<< "${{inputs.assignees}}"
+            for assignee in "${ASSIGNEE_ARRAY[@]}"; do
+              gh pr edit "${PR_NUMBER}" --add-assignee "${assignee}"
+            done
+          fi
+
+          echo "number=${PR_NUMBER}" >> "${GITHUB_OUTPUT}"
+          echo "title=${PR_TITLE}" >> "${GITHUB_OUTPUT}"
+          echo "html_url=${PR_HTML_URL}" >> "${GITHUB_OUTPUT}"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Display PR Information
+        run: |
+          echo "PR Created Successfully!"
+          echo "PR Number: ${{ steps.create-pull-request.outputs.number }}"
+          echo "PR Title: ${{ steps.create-pull-request.outputs.title }}"
+          echo "PR URL: ${{ steps.create-pull-request.outputs.html_url }}"

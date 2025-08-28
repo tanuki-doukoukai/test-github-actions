@@ -1,0 +1,41 @@
+name: Test PR Review Request
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull Request number to add reviewer'
+        required: true
+        type: string
+      reviewer:
+        description: 'GitHub username to add as reviewer'
+        required: true
+        type: string
+
+jobs:
+  test-pr-review-request:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.TANUKI_2_APP_ID }}
+          private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+
+      - name: Request Pull Request Review
+        run: |
+          echo "Adding reviewer '${{ inputs.reviewer }}' to PR #${{ inputs.pr_number }}"
+          gh pr edit ${{ inputs.pr_number }} \
+            --add-reviewer "${{ inputs.reviewer }}"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Verify Review Request
+        run: |
+          echo "Checking if reviewer was added successfully..."
+          gh pr view ${{ inputs.pr_number }} --json reviewRequests | jq '.reviewRequests'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
