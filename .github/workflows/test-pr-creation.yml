@@ -47,35 +47,78 @@ jobs:
       - name: Create Pull Request
         id: create-pull-request
         run: |
+          echo "========== Step 1: Preparing PR Body =========="
           PR_BODY=$(printf "%s\n" "${{ inputs.pr_body }}")
-
-          PR_DATA=$(gh pr create \
+          echo "PR_BODY: ${PR_BODY}"
+          
+          echo ""
+          echo "========== Step 2: Creating PR =========="
+          echo "Command: gh pr create --title \"${{ inputs.pr_title }}\" --head \"${{ inputs.head_branch }}\" --base \"${{ inputs.base_branch }}\" --body \"${PR_BODY}\" --repo \"${{ github.repository }}\""
+          
+          PR_URL=$(gh pr create \
             --title "${{ inputs.pr_title }}" \
             --head "${{ inputs.head_branch }}" \
             --base "${{ inputs.base_branch }}" \
             --body "${PR_BODY}" \
-            --repo "${{ github.repository }}" \
-            --json number,title,url)
-
+            --repo "${{ github.repository }}")
+          
+          echo "PR_URL returned: ${PR_URL}"
+          
+          echo ""
+          echo "========== Step 3: Getting PR Data =========="
+          echo "Command: gh pr view \"${PR_URL}\" --json number,title,url"
+          
+          PR_DATA=$(gh pr view "${PR_URL}" --json number,title,url)
+          echo "PR_DATA (raw JSON): ${PR_DATA}"
+          
+          echo ""
+          echo "========== Step 4: Extracting PR Information =========="
           PR_NUMBER=$(echo "${PR_DATA}" | jq -r .number)
+          echo "PR_NUMBER extracted: ${PR_NUMBER}"
+          
           PR_TITLE=$(echo "${PR_DATA}" | jq -r .title)
+          echo "PR_TITLE extracted: ${PR_TITLE}"
+          
           PR_HTML_URL=$(echo "${PR_DATA}" | jq -r .url)
+          echo "PR_HTML_URL extracted: ${PR_HTML_URL}"
 
+          echo ""
+          echo "========== Step 5: Validation =========="
           if [ -z "${PR_NUMBER}" ] || [ "${PR_NUMBER}" = "null" ]; then
-            echo "Failed to create PR or retrieve PR number." >&2
+            echo "ERROR: Failed to create PR or retrieve PR number." >&2
+            echo "PR_NUMBER value: '${PR_NUMBER}'" >&2
             exit 1
           fi
+          echo "Validation passed: PR_NUMBER is valid"
 
+          echo ""
+          echo "========== Step 6: Assignee Processing =========="
           if [ "${{ inputs.assignees }}" != "" ]; then
+            echo "Assignees input: '${{ inputs.assignees }}'"
             IFS=',' read -r -a ASSIGNEE_ARRAY <<< "${{inputs.assignees}}"
+            echo "Number of assignees: ${#ASSIGNEE_ARRAY[@]}"
             for assignee in "${ASSIGNEE_ARRAY[@]}"; do
+              echo "Adding assignee: ${assignee}"
               gh pr edit "${PR_NUMBER}" --add-assignee "${assignee}"
+              echo "Assignee ${assignee} added successfully"
             done
+          else
+            echo "No assignees to add"
           fi
 
+          echo ""
+          echo "========== Step 7: Setting GitHub Output =========="
           echo "number=${PR_NUMBER}" >> "${GITHUB_OUTPUT}"
+          echo "Written to GITHUB_OUTPUT: number=${PR_NUMBER}"
+          
           echo "title=${PR_TITLE}" >> "${GITHUB_OUTPUT}"
+          echo "Written to GITHUB_OUTPUT: title=${PR_TITLE}"
+          
           echo "html_url=${PR_HTML_URL}" >> "${GITHUB_OUTPUT}"
+          echo "Written to GITHUB_OUTPUT: html_url=${PR_HTML_URL}"
+          
+          echo ""
+          echo "========== PR Creation Complete =========="
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
