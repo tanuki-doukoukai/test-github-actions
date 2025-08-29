@@ -46,6 +46,7 @@ jobs:
       - name: Create Pull Request
         id: create-pull-request
         env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           PR_BODY: |
             ## Test PR with Multi-line Body
 
@@ -149,8 +150,6 @@ jobs:
           
           echo ""
           echo "========== PR Creation Complete =========="
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Display PR Information
         run: |
