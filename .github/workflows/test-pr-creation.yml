@@ -39,40 +39,43 @@ jobs:
           app-id: ${{ secrets.TANUKI_2_APP_ID }}
           private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
 
+      - name: Get current timestamp
+        id: timestamp
+        run: echo "now=$(date '+%Y-%m-%d %H:%M:%S')" >> "$GITHUB_OUTPUT"
+
       - name: Create Pull Request
         id: create-pull-request
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_BODY: |
+            ## Test PR with Multi-line Body
+
+            This is a test PR created via workflow dispatch.
+            This PR demonstrates that multi-line body works correctly.
+
+            ### Features
+            - Multi-line description support
+            - Markdown formatting
+            - Line breaks preserved
+
+            ### Test Content
+            1. First item
+            2. Second item
+            3. Third item
+
+            ### Code Example
+            ```bash
+            echo 'Testing multi-line PR body'
+            date
+            ```
+
+            ---
+            Generated at: ${{ steps.timestamp.outputs.now }}
+            Workflow run: ${{ github.run_number }}
+            Repository: ${{ github.repository }}
         run: |
-          echo "========== Step 1: Defining PR Body =========="
-          # Define multi-line body using heredoc (without quotes to allow variable expansion)
-          PR_BODY=$(cat <<EOF
-## Test PR with Multi-line Body
-
-This is a test PR created via workflow dispatch.
-This PR demonstrates that multi-line body works correctly.
-
-### Features
-- Multi-line description support
-- Markdown formatting
-- Line breaks preserved
-
-### Test Content
-1. First item
-2. Second item
-3. Third item
-
-### Code Example
-\`\`\`bash
-echo 'Testing multi-line PR body'
-date
-\`\`\`
-
----
-Generated at: $(date '+%Y-%m-%d %H:%M:%S')
-Workflow run: ${{ github.run_number }}
-EOF
-          )
-          
-          echo "PR_BODY defined:"
+          echo "========== Step 1: Showing PR Body =========="
+          echo "PR_BODY defined in env:"
           echo "---START OF BODY---"
           echo "${PR_BODY}"
           echo "---END OF BODY---"
@@ -147,8 +150,6 @@ EOF
           
           echo ""
           echo "========== PR Creation Complete =========="
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Display PR Information
         run: |
