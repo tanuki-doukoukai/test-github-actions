@@ -43,8 +43,9 @@ jobs:
         id: create-pull-request
         run: |
           echo "========== Step 1: Defining PR Body =========="
-          # Define multi-line body directly in the workflow
-          PR_BODY="## Test PR with Multi-line Body
+          # Define multi-line body using heredoc (without quotes to allow variable expansion)
+          PR_BODY=$(cat <<EOF
+## Test PR with Multi-line Body
 
 This is a test PR created via workflow dispatch.
 This PR demonstrates that multi-line body works correctly.
@@ -67,7 +68,9 @@ date
 
 ---
 Generated at: $(date '+%Y-%m-%d %H:%M:%S')
-Workflow run: ${{ github.run_number }}"
+Workflow run: ${{ github.run_number }}
+EOF
+          )
           
           echo "PR_BODY defined:"
           echo "---START OF BODY---"
