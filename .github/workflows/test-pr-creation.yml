@@ -8,11 +8,6 @@ on:
         required: true
         type: string
         default: 'Test PR from dispatch workflow'
-      pr_body:
-        description: 'Pull Request body/description'
-        required: false
-        type: string
-        default: 'This is a test PR created via workflow dispatch'
       head_branch:
         description: 'Head branch for the PR'
         required: true
@@ -47,35 +42,111 @@ jobs:
       - name: Create Pull Request
         id: create-pull-request
         run: |
-          PR_BODY=$(printf "%s\n" "${{ inputs.pr_body }}")
+          echo "========== Step 1: Defining PR Body =========="
+          # Define multi-line body using heredoc (without quotes to allow variable expansion)
+          PR_BODY=$(cat <<EOF
+## Test PR with Multi-line Body
 
-          PR_DATA=$(gh pr create \
+This is a test PR created via workflow dispatch.
+This PR demonstrates that multi-line body works correctly.
+
+### Features
+- Multi-line description support
+- Markdown formatting
+- Line breaks preserved
+
+### Test Content
+1. First item
+2. Second item
+3. Third item
+
+### Code Example
+\`\`\`bash
+echo 'Testing multi-line PR body'
+date
+\`\`\`
+
+---
+Generated at: $(date '+%Y-%m-%d %H:%M:%S')
+Workflow run: ${{ github.run_number }}
+EOF
+          )
+          
+          echo "PR_BODY defined:"
+          echo "---START OF BODY---"
+          echo "${PR_BODY}"
+          echo "---END OF BODY---"
+          echo ""
+          echo "Number of lines in body: $(echo "${PR_BODY}" | wc -l)"
+          
+          echo ""
+          echo "========== Step 2: Creating PR =========="
+          echo "Creating PR with gh pr create..."
+          
+          PR_URL=$(gh pr create \
             --title "${{ inputs.pr_title }}" \
             --head "${{ inputs.head_branch }}" \
             --base "${{ inputs.base_branch }}" \
             --body "${PR_BODY}" \
-            --repo "${{ github.repository }}" \
-            --json number,title,url)
-
+            --repo "${{ github.repository }}")
+          
+          echo "PR_URL returned: ${PR_URL}"
+          
+          echo ""
+          echo "========== Step 3: Getting PR Data =========="
+          echo "Command: gh pr view \"${PR_URL}\" --json number,title,url"
+          
+          PR_DATA=$(gh pr view "${PR_URL}" --json number,title,url)
+          echo "PR_DATA (raw JSON): ${PR_DATA}"
+          
+          echo ""
+          echo "========== Step 4: Extracting PR Information =========="
           PR_NUMBER=$(echo "${PR_DATA}" | jq -r .number)
+          echo "PR_NUMBER extracted: ${PR_NUMBER}"
+          
           PR_TITLE=$(echo "${PR_DATA}" | jq -r .title)
+          echo "PR_TITLE extracted: ${PR_TITLE}"
+          
           PR_HTML_URL=$(echo "${PR_DATA}" | jq -r .url)
+          echo "PR_HTML_URL extracted: ${PR_HTML_URL}"
 
+          echo ""
+          echo "========== Step 5: Validation =========="
           if [ -z "${PR_NUMBER}" ] || [ "${PR_NUMBER}" = "null" ]; then
-            echo "Failed to create PR or retrieve PR number." >&2
+            echo "ERROR: Failed to create PR or retrieve PR number." >&2
+            echo "PR_NUMBER value: '${PR_NUMBER}'" >&2
             exit 1
           fi
+          echo "Validation passed: PR_NUMBER is valid"
 
+          echo ""
+          echo "========== Step 6: Assignee Processing =========="
           if [ "${{ inputs.assignees }}" != "" ]; then
+            echo "Assignees input: '${{ inputs.assignees }}'"
             IFS=',' read -r -a ASSIGNEE_ARRAY <<< "${{inputs.assignees}}"
+            echo "Number of assignees: ${#ASSIGNEE_ARRAY[@]}"
             for assignee in "${ASSIGNEE_ARRAY[@]}"; do
+              echo "Adding assignee: ${assignee}"
               gh pr edit "${PR_NUMBER}" --add-assignee "${assignee}"
+              echo "Assignee ${assignee} added successfully"
             done
+          else
+            echo "No assignees to add"
           fi
 
+          echo ""
+          echo "========== Step 7: Setting GitHub Output =========="
           echo "number=${PR_NUMBER}" >> "${GITHUB_OUTPUT}"
+          echo "Written to GITHUB_OUTPUT: number=${PR_NUMBER}"
+          
           echo "title=${PR_TITLE}" >> "${GITHUB_OUTPUT}"
+          echo "Written to GITHUB_OUTPUT: title=${PR_TITLE}"
+          
           echo "html_url=${PR_HTML_URL}" >> "${GITHUB_OUTPUT}"
+          echo "Written to GITHUB_OUTPUT: html_url=${PR_HTML_URL}"
+          
+          echo ""
+          echo "========== PR Creation Complete =========="
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
