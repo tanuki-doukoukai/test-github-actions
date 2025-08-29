@@ -9,10 +9,26 @@ on:
         type: string
         default: 'Test PR from dispatch workflow'
       pr_body:
-        description: 'Pull Request body/description'
+        description: 'Pull Request body/description (supports multi-line)'
         required: false
         type: string
-        default: 'This is a test PR created via workflow dispatch'
+        default: |
+          ## Test PR Description
+          
+          This is a test PR created via workflow dispatch.
+          
+          ### Features
+          - Support for multi-line descriptions
+          - Markdown formatting
+          
+          ### Notes
+          You can use:
+          1. Numbered lists
+          2. Bullet points
+          3. **Bold** and *italic* text
+          
+          ---
+          End of description
       head_branch:
         description: 'Head branch for the PR'
         required: true
@@ -48,8 +64,14 @@ jobs:
         id: create-pull-request
         run: |
           echo "========== Step 1: Preparing PR Body =========="
-          PR_BODY=$(printf "%s\n" "${{ inputs.pr_body }}")
-          echo "PR_BODY: ${PR_BODY}"
+          # Handle multi-line body properly
+          PR_BODY="${{ inputs.pr_body }}"
+          echo "PR_BODY (raw input):"
+          echo "---START OF BODY---"
+          echo "${PR_BODY}"
+          echo "---END OF BODY---"
+          echo ""
+          echo "Number of lines in body: $(echo "${PR_BODY}" | wc -l)"
           
           echo ""
           echo "========== Step 2: Creating PR =========="
