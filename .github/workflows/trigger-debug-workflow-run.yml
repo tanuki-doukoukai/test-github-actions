@@ -1,0 +1,21 @@
+name: Trigger Debug Workflow Run
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - '**'  # All branches
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Simple test
+        run: |
+          echo "This workflow will trigger 'Debug Workflow Run PR Search' workflow"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit SHA: ${{ github.sha }}"
+          echo "Event: ${{ github.event_name }}"

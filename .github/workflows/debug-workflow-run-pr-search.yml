@@ -1,0 +1,160 @@
+name: Debug Workflow Run PR Search
+
+on:
+  workflow_run:
+    workflows: ["Trigger Debug Workflow Run"]  # Triggered by the trigger workflow
+    types:
+      - completed
+
+jobs:
+  debug-pr-search:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.TANUKI_2_APP_ID }}
+          private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+
+      - name: Debug workflow_run payload
+        run: |
+          echo "=== Workflow Run Information ==="
+          echo "Workflow Name: ${{ github.event.workflow_run.name }}"
+          echo "Workflow ID: ${{ github.event.workflow_run.id }}"
+          echo "Head SHA: ${{ github.event.workflow_run.head_sha }}"
+          echo "Head Branch: ${{ github.event.workflow_run.head_branch }}"
+          echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
+          echo ""
+
+      - name: Get PRs using github.rest (Octokit)
+        id: get-prs-octokit
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            console.log("=== Using github.rest.repos.listPullRequestsAssociatedWithCommit ===");
+            console.log(`Commit SHA: ${context.payload.workflow_run.head_sha}`);
+            console.log("");
+
+            const res = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.payload.workflow_run.head_sha
+            });
+
+            console.log("API Response Status:", res.status);
+            console.log("Number of PRs:", res.data.length);
+            console.log("");
+            console.log("PR Details:");
+            res.data.forEach(pr => {
+              console.log(`PR #${pr.number}: state=${pr.state}, head.ref=${pr.head.ref}, base.ref=${pr.base.ref}`);
+            });
+            console.log("");
+
+            // Save for comparison
+            const fs = require('fs');
+            fs.writeFileSync('prs-octokit.json', JSON.stringify(res.data, null, 2));
+
+            // Search for matching PR
+            console.log("=== Searching with github.rest result ===");
+            console.log(`Looking for: state == 'open' AND head.ref == '${context.payload.workflow_run.head_branch}'`);
+            console.log("");
+
+            const matchingPr = res.data.find(pr =>
+              pr.state === 'open' && pr.head.ref === context.payload.workflow_run.head_branch
+            );
+
+            if (matchingPr) {
+              console.log("✅ Matching PR found:");
+              console.log(`PR #${matchingPr.number}: state=${matchingPr.state}, head.ref=${matchingPr.head.ref}`);
+            } else {
+              console.log("❌ No matching PR found with github.rest!");
+            }
+            console.log("");
+
+      - name: Get PRs using gh api (Direct REST API)
+        id: get-prs-gh-api
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          echo "=== Using gh api (Direct REST API) ==="
+          echo "Commit SHA: ${{ github.event.workflow_run.head_sha }}"
+          echo ""
+
+          RESPONSE=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/commits/${{ github.event.workflow_run.head_sha }}/pulls")
+
+          echo "Number of PRs: $(echo "$RESPONSE" | jq '. | length')"
+          echo ""
+          echo "PR Details:"
+          echo "$RESPONSE" | jq -r '.[] | "PR #\(.number): state=\(.state), head.ref=\(.head.ref), base.ref=\(.base.ref)"'
+          echo ""
+
+          # Save for comparison
+          echo "$RESPONSE" > prs-gh-api.json
+
+          echo "=== Searching with gh api result ==="
+          echo "Looking for: state == 'open' AND head.ref == '${{ github.event.workflow_run.head_branch }}'"
+          echo ""
+
+          MATCHING_PR=$(echo "$RESPONSE" | jq -r --arg branch "${{ github.event.workflow_run.head_branch }}" '.[] | select(.state == "open" and .head.ref == $branch)')
+
+          if [ -z "$MATCHING_PR" ]; then
+            echo "❌ No matching PR found with gh api!"
+          else
+            echo "✅ Matching PR found:"
+            echo "$MATCHING_PR" | jq '{number, state, head_ref: .head.ref}'
+          fi
+          echo ""
+
+      - name: Compare results
+        run: |
+          echo "=== Comparing github.rest vs gh api results ==="
+          echo ""
+
+          echo "github.rest result:"
+          cat prs-octokit.json | jq -r '.[] | "PR #\(.number): state=\(.state), head.ref=\(.head.ref)"'
+          echo ""
+
+          echo "gh api result:"
+          cat prs-gh-api.json | jq -r '.[] | "PR #\(.number): state=\(.state), head.ref=\(.head.ref)"'
+          echo ""
+
+          echo "Difference check:"
+          diff <(cat prs-octokit.json | jq -S .) <(cat prs-gh-api.json | jq -S .) || echo "⚠️ Results differ between github.rest and gh api"
+
+      - name: Alternative search methods
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          echo "=== Testing alternative search methods ==="
+          echo ""
+
+          echo "Method 1: List all open PRs"
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/pulls?state=open" \
+            | jq -r '.[] | "PR #\(.number): head.ref=\(.head.ref), head.sha=\(.head.sha)"'
+          echo ""
+
+          echo "Method 2: Check if head.sha matches in open PRs"
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/pulls?state=open" \
+            | jq -r --arg sha "${{ github.event.workflow_run.head_sha }}" \
+            '.[] | select(.head.sha == $sha) | "PR #\(.number): head.ref=\(.head.ref), head.sha=\(.head.sha)"'
+          echo ""
+
+      - name: Summary
+        run: |
+          echo "=== Summary ==="
+          echo "Commit SHA from workflow_run: ${{ github.event.workflow_run.head_sha }}"
+          echo "Branch from workflow_run: ${{ github.event.workflow_run.head_branch }}"
+          echo ""
+          echo "Check the logs above to identify why PR search is failing."
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}

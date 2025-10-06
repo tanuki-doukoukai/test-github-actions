@@ -7,8 +7,8 @@ on:
         description: 'Pull Request number to add reviewer'
         required: true
         type: string
-      reviewer:
-        description: 'GitHub username to add as reviewer'
+      reviewers:
+        description: 'GitHub username(s) to add as reviewer (comma-separated for multiple)'
         required: true
         type: string
 
@@ -27,9 +27,23 @@ jobs:
 
       - name: Request Pull Request Review
         run: |
-          echo "Adding reviewer '${{ inputs.reviewer }}' to PR #${{ inputs.pr_number }}"
-          gh pr edit ${{ inputs.pr_number }} \
-            --add-reviewer "${{ inputs.reviewer }}"
+          echo "Adding reviewer(s) to PR #${{ inputs.pr_number }}"
+          echo "Reviewers: ${{ inputs.reviewers }}"
+          
+          # Use REST API directly to avoid GraphQL organization.teams permission issue
+          echo "Using gh api to add reviewer(s)..."
+          
+          # Convert comma-separated list to JSON array
+          REVIEWERS_JSON=$(echo "${{ inputs.reviewers }}" | jq -R 'split(",") | map(gsub("^\\s+|\\s+$";""))')
+          echo "Reviewers JSON: ${REVIEWERS_JSON}"
+          
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/pulls/${{ inputs.pr_number }}/requested_reviewers" \
+            --input - <<< "{\"reviewers\": ${REVIEWERS_JSON}}"
+          
+          echo "Reviewer request sent successfully"
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
