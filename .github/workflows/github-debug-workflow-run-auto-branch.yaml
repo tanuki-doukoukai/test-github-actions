@@ -1,4 +1,4 @@
-name: Debug Workflow Run Auto Branch
+name: Github / Debug Workflow Run Auto Branch
 
 on:
   workflow_run:
