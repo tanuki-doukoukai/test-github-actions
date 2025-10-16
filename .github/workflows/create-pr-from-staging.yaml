@@ -1,0 +1,56 @@
+name: Create PR from staging to develop
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - staging
+
+jobs:
+  create-pr:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout staging
+        uses: actions/checkout@v4
+        with:
+          ref: staging
+          fetch-depth: 0
+
+      - name: Create GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.TANUKI_2_APP_ID }}
+          private-key: ${{ secrets.TANUKI_2_PRIVATE_KEY }}
+
+      - name: Create auto branch
+        run: |
+          BRANCH_NAME="auto/$(date -u +%Y%m%d%H%M%S)"
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "$BRANCH_NAME"
+          git push origin "$BRANCH_NAME"
+
+      - name: Create PR to develop
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh pr create \
+            --base develop \
+            --head "${{ env.BRANCH_NAME }}" \
+            --title "Auto merge from staging (${{ env.BRANCH_NAME }})" \
+            --body "$(cat <<'EOF'
+          ## Summary
+          Automatically created PR from staging to develop
+
+          Triggered by: #${{ github.event.pull_request.number }}
+          Created at: $(date -u +%Y-%m-%d\ %H:%M:%S) UTC
+
+          🤖 Generated with [Claude Code](https://claude.com/claude-code)
+          EOF
+          )"
