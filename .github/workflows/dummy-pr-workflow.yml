@@ -1,0 +1,29 @@
+name: Dummy PR Workflow
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+    branches:
+      - "auto/**"
+
+jobs:
+  dummy-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dummy step
+        run: |
+          echo "=== Dummy PR Workflow ==="
+          echo "PR Number: ${{ github.event.pull_request.number }}"
+          echo "PR Title: ${{ github.event.pull_request.title }}"
+          echo "Head Branch: ${{ github.head_ref }}"
+          echo "Base Branch: ${{ github.base_ref }}"
+          echo "Head SHA: ${{ github.event.pull_request.head.sha }}"
+          echo "Event: ${{ github.event_name }}"
+          echo ""
+          echo "This workflow will trigger the workflow_run event"

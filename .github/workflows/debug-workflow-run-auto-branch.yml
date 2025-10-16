@@ -1,0 +1,56 @@
+name: Debug Workflow Run Auto Branch
+
+on:
+  workflow_run:
+    workflows:
+      - "*"
+    types:
+      - completed
+    branches:
+      - "auto/**"
+
+jobs:
+  debug-workflow-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Debug workflow_run payload
+        run: |
+          echo "=== Workflow Run Event Triggered ==="
+          echo "✅ This workflow was triggered by workflow_run event!"
+          echo ""
+          echo "=== Workflow Run Information ==="
+          echo "Workflow Name: ${{ github.event.workflow_run.name }}"
+          echo "Workflow ID: ${{ github.event.workflow_run.id }}"
+          echo "Head SHA: ${{ github.event.workflow_run.head_sha }}"
+          echo "Head Branch: ${{ github.event.workflow_run.head_branch }}"
+          echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
+          echo "Status: ${{ github.event.workflow_run.status }}"
+          echo "Event: ${{ github.event.workflow_run.event }}"
+          echo ""
+          echo "=== Repository Information ==="
+          echo "Repository: ${{ github.repository }}"
+          echo "Head Repository: ${{ github.event.workflow_run.head_repository.full_name }}"
+          echo ""
+
+      - name: Check if branch matches auto/** pattern
+        run: |
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          echo "=== Branch Filter Check ==="
+          echo "Head Branch: $BRANCH"
+          echo ""
+
+          if [[ "$BRANCH" == auto/* ]]; then
+            echo "✅ Branch matches auto/** pattern"
+          else
+            echo "❌ Branch does NOT match auto/** pattern"
+            echo "Expected pattern: auto/**"
+          fi
+          echo ""
+
+      - name: Show full workflow_run payload
+        run: |
+          echo "=== Full workflow_run payload ==="
+          echo '${{ toJSON(github.event.workflow_run) }}' | jq '.'
