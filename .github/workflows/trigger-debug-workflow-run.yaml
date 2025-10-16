@@ -19,3 +19,7 @@ jobs:
           echo "Branch: ${{ github.ref_name }}"
           echo "Commit SHA: ${{ github.sha }}"
           echo "Event: ${{ github.event_name }}"
+          echo ""
+          echo "Sleeping for 10 seconds to ensure workflow_run can catch this..."
+          sleep 10
+          echo "Done!"
