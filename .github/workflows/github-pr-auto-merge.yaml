@@ -1,4 +1,4 @@
-name: Github / Debug Workflow Run Auto Branch
+name: GitHub / Auto Merge on CI Success
 
 on:
   workflow_run:
