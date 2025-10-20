@@ -1,0 +1,21 @@
+name: Concurrent Workflow 1
+
+on:
+  push:
+    branches:
+      - 'auto/**'
+  workflow_dispatch:
+
+jobs:
+  job1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Workflow 1
+        run: |
+          echo "Starting Concurrent Workflow 1"
+          echo "Current time: $(date)"
+          sleep 10
+          echo "Workflow 1 completed"
