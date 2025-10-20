@@ -3,7 +3,7 @@ name: Concurrent Workflow 5
 on:
   push:
     branches:
-      - 'trigger/**'
+      - 'auto/**'
   workflow_dispatch:
 
 jobs:
