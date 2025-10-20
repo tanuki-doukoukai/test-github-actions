@@ -1,4 +1,4 @@
-name: Trigger Debug Workflow Run
+name: Trigger / Debug Workflow Run
 
 on:
   workflow_dispatch:
