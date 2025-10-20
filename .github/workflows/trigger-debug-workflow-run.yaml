@@ -5,11 +5,6 @@ on:
   push:
     branches:
       - '**'  # All branches
-  pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
 
 jobs:
   trigger:
