@@ -1,0 +1,21 @@
+name: Concurrent Workflow 5
+
+on:
+  push:
+    branches:
+      - 'trigger/**'
+  workflow_dispatch:
+
+jobs:
+  job5:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Workflow 5
+        run: |
+          echo "Starting Concurrent Workflow 5"
+          echo "Current time: $(date)"
+          sleep 8
+          echo "Workflow 5 completed"
