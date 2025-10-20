@@ -3,7 +3,7 @@ name: GitHub / Auto Merge on CI Success
 on:
   workflow_run:
     workflows:
-      - "**"
+      - "*"
     types:
       - completed
     branches:
