@@ -1,9 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(for file in *.yml)",
-      "Bash(do git mv \"$file\" \"$file%.yml.yaml\")",
-      "Bash(done)"
+      "Bash(chmod:*)",
+      "Bash(gh pr view:*)"
     ],
     "deny": [],
     "ask": []
